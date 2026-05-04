@@ -32,39 +32,10 @@ object EffectDispatcher {
     fun fieldSurroundMidImageToRaw(value: Int): Int = value * 10 + 100
     fun fieldSurroundDepthToRaw(value: Int): Int = value * 75 + 200
     fun dynamicSystemStrengthToRaw(value: Int): Int = value * 20 + 100
-    fun bassGainToRaw(value: Int): Int = value * 50 + 50
     fun bassFrequencyToRaw(value: Int): Int = value + 15
-    fun clarityGainToRaw(value: Int): Int = value * 50
+    fun fieldSurroundWideningToRaw(value: Int): Int = value * 100
 
-    val OUTPUT_VOLUME_VALUES = intArrayOf(
-        1, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
-        110, 120, 130, 140, 150, 160, 170, 180, 190, 200
-    )
-    val OUTPUT_DB_VALUES = intArrayOf(30, 50, 70, 80, 90, 100)
-    val PLAYBACK_GAIN_RATIO_VALUES = intArrayOf(50, 100, 300)
-    val MULTI_FACTOR_VALUES = intArrayOf(
-        100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 3000
-    )
-    val VSE_BARK_VALUES = intArrayOf(
-        2200, 2800, 3400, 4000, 4600, 5200, 5800, 6400, 7000, 7600, 8200
-    )
-    val DIFF_SURROUND_DELAY_VALUES = IntArray(20) { (it + 1) * 100 }
-    val FIELD_SURROUND_WIDENING_VALUES = intArrayOf(0, 100, 200, 300, 400, 500, 600, 700, 800)
-
-    val BASS_GAIN_DB_LABELS = arrayOf(
-        "3.5", "6.0", "8.0", "9.5", "10.9", "12.0",
-        "13.1", "14.0", "14.8", "15.6", "16.1", "17.0",
-        "17.5", "18.1", "18.6", "19.1", "19.5", "20.0", "20.4", "20.8"
-    )
-    val BASS_SUBWOOFER_GAIN_DB_LABELS = arrayOf(
-        "1.9", "8.0", "11.5", "14.0", "15.9", "17.5",
-        "18.8", "20.0", "21.0", "21.9", "22.8", "23.5",
-        "24.2", "24.9", "25.5", "26.0", "26.5", "27.0", "27.5", "28.0"
-    )
-    val CLARITY_GAIN_DB_LABELS = arrayOf(
-        "0.0", "3.5", "6.0", "8.0", "10.0", "11.0",
-        "12.0", "13.0", "14.0", "14.8"
-    )
+    fun diffSurroundDelayToRaw(ms: Int): Int = ms * 100
 
     val EQ_PRESETS = listOf(
         "4.5;4.5;3.5;1.2;1.0;0.5;1.4;1.75;3.5;2.5;",
@@ -363,25 +334,15 @@ object EffectDispatcher {
             "Dispatch",
             "Dispatch: headphone outputVol=${state.out.hp.volume} pan=${state.out.hp.channelPan} limiter=${state.out.hp.limiter}"
         )
-        effect.setParameter(
-            ViperParams.PARAM_HP_OUTPUT_VOLUME,
-            OUTPUT_VOLUME_VALUES.getOrElse(state.out.hp.volume) { 100 })
+        effect.setParameter(ViperParams.PARAM_HP_OUTPUT_VOLUME, state.out.hp.volume)
         effect.setParameter(ViperParams.PARAM_HP_CHANNEL_PAN, state.out.hp.channelPan)
-        effect.setParameter(
-            ViperParams.PARAM_HP_LIMITER,
-            OUTPUT_DB_VALUES.getOrElse(state.out.hp.limiter) { 100 })
+        effect.setParameter(ViperParams.PARAM_HP_LIMITER, state.out.hp.limiter)
 
         effect.setParameter(ViperParams.PARAM_HP_AGC_ENABLE, if (state.agc.hp.enabled) 1 else 0)
         FileLogger.d("Dispatch", "AGC: ${if (state.agc.hp.enabled) "ON" else "OFF"}")
-        effect.setParameter(
-            ViperParams.PARAM_HP_AGC_RATIO,
-            PLAYBACK_GAIN_RATIO_VALUES.getOrElse(state.agc.hp.strength) { 50 })
-        effect.setParameter(
-            ViperParams.PARAM_HP_AGC_MAX_SCALER,
-            MULTI_FACTOR_VALUES.getOrElse(state.agc.hp.maxGain) { 100 })
-        effect.setParameter(
-            ViperParams.PARAM_HP_AGC_VOLUME,
-            OUTPUT_DB_VALUES.getOrElse(state.agc.hp.outputThreshold) { 100 })
+        effect.setParameter(ViperParams.PARAM_HP_AGC_RATIO, state.agc.hp.strength)
+        effect.setParameter(ViperParams.PARAM_HP_AGC_MAX_SCALER, state.agc.hp.maxGain)
+        effect.setParameter(ViperParams.PARAM_HP_AGC_VOLUME, state.agc.hp.outputThreshold)
 
         FileLogger.d("Dispatch", "FET: ${if (state.fet.hp.enabled) "ON" else "OFF"}")
         effect.setParameter(
@@ -452,9 +413,7 @@ object EffectDispatcher {
             if (state.vse.hp.enabled) 1 else 0
         )
         FileLogger.d("Dispatch", "VSE: ${if (state.vse.hp.enabled) "ON" else "OFF"}")
-        effect.setParameter(
-            ViperParams.PARAM_HP_SPECTRUM_EXTENSION_BARK,
-            VSE_BARK_VALUES.getOrElse(state.vse.hp.strength) { 7600 })
+        effect.setParameter(ViperParams.PARAM_HP_SPECTRUM_EXTENSION_BARK, state.vse.hp.strength)
         effect.setParameter(
             ViperParams.PARAM_HP_SPECTRUM_EXTENSION_BARK_RECONSTRUCT,
             vseExciterToRaw(state.vse.hp.exciter)
@@ -488,7 +447,8 @@ object EffectDispatcher {
         )
         effect.setParameter(
             ViperParams.PARAM_HP_FIELD_SURROUND_WIDENING,
-            FIELD_SURROUND_WIDENING_VALUES.getOrElse(state.fieldSurround.hp.widening) { 0 })
+            fieldSurroundWideningToRaw(state.fieldSurround.hp.widening)
+        )
         effect.setParameter(
             ViperParams.PARAM_HP_FIELD_SURROUND_MID_IMAGE,
             fieldSurroundMidImageToRaw(state.fieldSurround.hp.midImage)
@@ -508,7 +468,8 @@ object EffectDispatcher {
         )
         effect.setParameter(
             ViperParams.PARAM_HP_DIFF_SURROUND_DELAY,
-            DIFF_SURROUND_DELAY_VALUES.getOrElse(state.diffSurround.hp.delay) { 500 })
+            diffSurroundDelayToRaw(state.diffSurround.hp.delay)
+        )
         effect.setParameter(
             ViperParams.PARAM_HP_DIFF_SURROUND_REVERSE,
             if (state.diffSurround.hp.reverse) 1 else 0
@@ -560,7 +521,7 @@ object EffectDispatcher {
             ViperParams.PARAM_HP_BASS_FREQUENCY,
             bassFrequencyToRaw(state.bass.hp.frequency)
         )
-        effect.setParameter(ViperParams.PARAM_HP_BASS_GAIN, bassGainToRaw(state.bass.hp.gain))
+        effect.setParameter(ViperParams.PARAM_HP_BASS_GAIN, state.bass.hp.gain)
         effect.setParameter(ViperParams.PARAM_HP_BASS_ANTI_POP, if (state.bass.hp.antiPop) 1 else 0)
 
         effect.setParameter(
@@ -573,10 +534,7 @@ object EffectDispatcher {
             ViperParams.PARAM_HP_BASS_MONO_FREQUENCY,
             bassFrequencyToRaw(state.bassMono.hp.frequency)
         )
-        effect.setParameter(
-            ViperParams.PARAM_HP_BASS_MONO_GAIN,
-            bassGainToRaw(state.bassMono.hp.gain)
-        )
+        effect.setParameter(ViperParams.PARAM_HP_BASS_MONO_GAIN, state.bassMono.hp.gain)
         effect.setParameter(
             ViperParams.PARAM_HP_BASS_MONO_ANTI_POP,
             if (state.bassMono.hp.antiPop) 1 else 0
@@ -588,10 +546,7 @@ object EffectDispatcher {
         )
         FileLogger.d("Dispatch", "Clarity: ${if (state.clarity.hp.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_HP_CLARITY_MODE, state.clarity.hp.mode)
-        effect.setParameter(
-            ViperParams.PARAM_HP_CLARITY_GAIN,
-            clarityGainToRaw(state.clarity.hp.gain)
-        )
+        effect.setParameter(ViperParams.PARAM_HP_CLARITY_GAIN, state.clarity.hp.gain)
 
         effect.setParameter(ViperParams.PARAM_HP_CURE_ENABLE, if (state.cure.hp.enabled) 1 else 0)
         FileLogger.d("Dispatch", "Cure: ${if (state.cure.hp.enabled) "ON" else "OFF"}")
@@ -610,25 +565,15 @@ object EffectDispatcher {
             "Dispatch",
             "Dispatch: speaker outputVol=${state.out.spk.volume} pan=${state.out.spk.channelPan} limiter=${state.out.spk.limiter}"
         )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_OUTPUT_VOLUME,
-            OUTPUT_VOLUME_VALUES.getOrElse(state.out.spk.volume) { 100 })
+        effect.setParameter(ViperParams.PARAM_SPK_OUTPUT_VOLUME, state.out.spk.volume)
         effect.setParameter(ViperParams.PARAM_SPK_CHANNEL_PAN, state.out.spk.channelPan)
-        effect.setParameter(
-            ViperParams.PARAM_SPK_LIMITER,
-            OUTPUT_DB_VALUES.getOrElse(state.out.spk.limiter) { 100 })
+        effect.setParameter(ViperParams.PARAM_SPK_LIMITER, state.out.spk.limiter)
 
         effect.setParameter(ViperParams.PARAM_SPK_AGC_ENABLE, if (state.agc.spk.enabled) 1 else 0)
         FileLogger.d("Dispatch", "AGC: ${if (state.agc.spk.enabled) "ON" else "OFF"}")
-        effect.setParameter(
-            ViperParams.PARAM_SPK_AGC_RATIO,
-            PLAYBACK_GAIN_RATIO_VALUES.getOrElse(state.agc.spk.strength) { 50 })
-        effect.setParameter(
-            ViperParams.PARAM_SPK_AGC_MAX_SCALER,
-            MULTI_FACTOR_VALUES.getOrElse(state.agc.spk.maxGain) { 100 })
-        effect.setParameter(
-            ViperParams.PARAM_SPK_AGC_VOLUME,
-            OUTPUT_DB_VALUES.getOrElse(state.agc.spk.outputThreshold) { 100 })
+        effect.setParameter(ViperParams.PARAM_SPK_AGC_RATIO, state.agc.spk.strength)
+        effect.setParameter(ViperParams.PARAM_SPK_AGC_MAX_SCALER, state.agc.spk.maxGain)
+        effect.setParameter(ViperParams.PARAM_SPK_AGC_VOLUME, state.agc.spk.outputThreshold)
 
         effect.setParameter(
             ViperParams.PARAM_SPK_FET_COMPRESSOR_ENABLE,
@@ -731,9 +676,7 @@ object EffectDispatcher {
             if (state.vse.spk.enabled) 1 else 0
         )
         FileLogger.d("Dispatch", "VSE: ${if (state.vse.spk.enabled) "ON" else "OFF"}")
-        effect.setParameter(
-            ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_BARK,
-            VSE_BARK_VALUES.getOrElse(state.vse.spk.strength) { 7600 })
+        effect.setParameter(ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_BARK, state.vse.spk.strength)
         effect.setParameter(
             ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_BARK_RECONSTRUCT,
             vseExciterToRaw(state.vse.spk.exciter)
@@ -749,7 +692,8 @@ object EffectDispatcher {
         )
         effect.setParameter(
             ViperParams.PARAM_SPK_FIELD_SURROUND_WIDENING,
-            FIELD_SURROUND_WIDENING_VALUES.getOrElse(state.fieldSurround.spk.widening) { 0 })
+            fieldSurroundWideningToRaw(state.fieldSurround.spk.widening)
+        )
         effect.setParameter(
             ViperParams.PARAM_SPK_FIELD_SURROUND_MID_IMAGE,
             fieldSurroundMidImageToRaw(state.fieldSurround.spk.midImage)
@@ -778,7 +722,8 @@ object EffectDispatcher {
         )
         effect.setParameter(
             ViperParams.PARAM_SPK_DIFF_SURROUND_DELAY,
-            DIFF_SURROUND_DELAY_VALUES.getOrElse(state.diffSurround.spk.delay) { 500 })
+            diffSurroundDelayToRaw(state.diffSurround.spk.delay)
+        )
         effect.setParameter(
             ViperParams.PARAM_SPK_DIFF_SURROUND_REVERSE,
             if (state.diffSurround.spk.reverse) 1 else 0
@@ -822,7 +767,7 @@ object EffectDispatcher {
             ViperParams.PARAM_SPK_BASS_FREQUENCY,
             bassFrequencyToRaw(state.bass.spk.frequency)
         )
-        effect.setParameter(ViperParams.PARAM_SPK_BASS_GAIN, bassGainToRaw(state.bass.spk.gain))
+        effect.setParameter(ViperParams.PARAM_SPK_BASS_GAIN, state.bass.spk.gain)
         effect.setParameter(
             ViperParams.PARAM_SPK_BASS_ANTI_POP,
             if (state.bass.spk.antiPop) 1 else 0
@@ -838,10 +783,7 @@ object EffectDispatcher {
             ViperParams.PARAM_SPK_BASS_MONO_FREQUENCY,
             bassFrequencyToRaw(state.bassMono.spk.frequency)
         )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_BASS_MONO_GAIN,
-            bassGainToRaw(state.bassMono.spk.gain)
-        )
+        effect.setParameter(ViperParams.PARAM_SPK_BASS_MONO_GAIN, state.bassMono.spk.gain)
         effect.setParameter(
             ViperParams.PARAM_SPK_BASS_MONO_ANTI_POP,
             if (state.bassMono.spk.antiPop) 1 else 0
@@ -853,10 +795,7 @@ object EffectDispatcher {
         )
         FileLogger.d("Dispatch", "Clarity: ${if (state.clarity.spk.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_SPK_CLARITY_MODE, state.clarity.spk.mode)
-        effect.setParameter(
-            ViperParams.PARAM_SPK_CLARITY_GAIN,
-            clarityGainToRaw(state.clarity.spk.gain)
-        )
+        effect.setParameter(ViperParams.PARAM_SPK_CLARITY_GAIN, state.clarity.spk.gain)
 
         effect.setParameter(ViperParams.PARAM_SPK_CURE_ENABLE, if (state.cure.spk.enabled) 1 else 0)
         FileLogger.d("Dispatch", "Cure: ${if (state.cure.spk.enabled) "ON" else "OFF"}")

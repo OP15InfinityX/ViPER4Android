@@ -92,17 +92,6 @@ class MainViewModel @Inject constructor(
 ) : AndroidViewModel(application) {
 
     companion object {
-        val OUTPUT_VOLUME_VALUES get() = EffectDispatcher.OUTPUT_VOLUME_VALUES
-        val OUTPUT_DB_VALUES get() = EffectDispatcher.OUTPUT_DB_VALUES
-        val PLAYBACK_GAIN_RATIO_VALUES get() = EffectDispatcher.PLAYBACK_GAIN_RATIO_VALUES
-        val MULTI_FACTOR_VALUES get() = EffectDispatcher.MULTI_FACTOR_VALUES
-        val VSE_BARK_VALUES get() = EffectDispatcher.VSE_BARK_VALUES
-        val DIFF_SURROUND_DELAY_VALUES get() = EffectDispatcher.DIFF_SURROUND_DELAY_VALUES
-        val FIELD_SURROUND_WIDENING_VALUES get() = EffectDispatcher.FIELD_SURROUND_WIDENING_VALUES
-        val BASS_GAIN_DB_LABELS get() = EffectDispatcher.BASS_GAIN_DB_LABELS
-        val BASS_SUBWOOFER_GAIN_DB_LABELS get() = EffectDispatcher.BASS_SUBWOOFER_GAIN_DB_LABELS
-        val CLARITY_GAIN_DB_LABELS get() = EffectDispatcher.CLARITY_GAIN_DB_LABELS
-
         const val PREF_AUTO_START = "auto_start"
         const val PREF_AIDL_MODE = "aidl_mode"
         const val PREF_GLOBAL_MODE = "global_mode"
@@ -501,7 +490,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { repository.setIntPreference(prefKey, value) }
         val param =
             if (isSpk) ViperParams.PARAM_SPK_OUTPUT_VOLUME else ViperParams.PARAM_HP_OUTPUT_VOLUME
-        dispatchInt(param, OUTPUT_VOLUME_VALUES.getOrElse(value) { 100 })
+        dispatchInt(param, value)
     }
 
     fun setChannelPan(value: Int) {
@@ -521,7 +510,7 @@ class MainViewModel @Inject constructor(
             if (isSpk) "${ViperParams.PARAM_SPK_LIMITER}" else "${ViperParams.PARAM_HP_LIMITER}"
         viewModelScope.launch { repository.setIntPreference(prefKey, value) }
         val param = if (isSpk) ViperParams.PARAM_SPK_LIMITER else ViperParams.PARAM_HP_LIMITER
-        dispatchInt(param, OUTPUT_DB_VALUES.getOrElse(value) { 100 })
+        dispatchInt(param, value)
     }
 
     fun setAgcEnabled(enabled: Boolean) {
@@ -542,18 +531,17 @@ class MainViewModel @Inject constructor(
                 ),
                 ParamEntry(
                     p(ViperParams.PARAM_HP_AGC_RATIO, ViperParams.PARAM_SPK_AGC_RATIO),
-                    intArrayOf(EffectDispatcher.PLAYBACK_GAIN_RATIO_VALUES.getOrElse(vals.strength) { 50 })
+                    intArrayOf(vals.strength)
                 ),
                 ParamEntry(
                     p(
                         ViperParams.PARAM_HP_AGC_MAX_SCALER,
                         ViperParams.PARAM_SPK_AGC_MAX_SCALER
-                    ),
-                    intArrayOf(EffectDispatcher.MULTI_FACTOR_VALUES.getOrElse(vals.maxGain) { 100 })
+                    ), intArrayOf(vals.maxGain)
                 ),
                 ParamEntry(
                     p(ViperParams.PARAM_HP_AGC_VOLUME, ViperParams.PARAM_SPK_AGC_VOLUME),
-                    intArrayOf(EffectDispatcher.OUTPUT_DB_VALUES.getOrElse(vals.outputThreshold) { 100 })
+                    intArrayOf(vals.outputThreshold)
                 )
             )
         )
@@ -566,7 +554,7 @@ class MainViewModel @Inject constructor(
             if (isSpk) "${ViperParams.PARAM_SPK_AGC_RATIO}" else "${ViperParams.PARAM_HP_AGC_RATIO}"
         viewModelScope.launch { repository.setIntPreference(prefKey, value) }
         val param = if (isSpk) ViperParams.PARAM_SPK_AGC_RATIO else ViperParams.PARAM_HP_AGC_RATIO
-        dispatchInt(param, PLAYBACK_GAIN_RATIO_VALUES.getOrElse(value) { 50 })
+        dispatchInt(param, value)
     }
 
     fun setAgcMaxGain(value: Int) {
@@ -577,7 +565,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { repository.setIntPreference(prefKey, value) }
         val param =
             if (isSpk) ViperParams.PARAM_SPK_AGC_MAX_SCALER else ViperParams.PARAM_HP_AGC_MAX_SCALER
-        dispatchInt(param, MULTI_FACTOR_VALUES.getOrElse(value) { 100 })
+        dispatchInt(param, value)
     }
 
     fun setAgcOutputThreshold(value: Int) {
@@ -587,7 +575,7 @@ class MainViewModel @Inject constructor(
             if (isSpk) "${ViperParams.PARAM_SPK_AGC_VOLUME}" else "${ViperParams.PARAM_HP_AGC_VOLUME}"
         viewModelScope.launch { repository.setIntPreference(prefKey, value) }
         val param = if (isSpk) ViperParams.PARAM_SPK_AGC_VOLUME else ViperParams.PARAM_HP_AGC_VOLUME
-        dispatchInt(param, OUTPUT_DB_VALUES.getOrElse(value) { 100 })
+        dispatchInt(param, value)
     }
 
     fun setFetEnabled(enabled: Boolean) {
@@ -936,8 +924,7 @@ class MainViewModel @Inject constructor(
                     p(
                         ViperParams.PARAM_HP_SPECTRUM_EXTENSION_BARK,
                         ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_BARK
-                    ),
-                    intArrayOf(EffectDispatcher.VSE_BARK_VALUES.getOrElse(vals.strength) { 7600 })
+                    ), intArrayOf(vals.strength)
                 ),
                 ParamEntry(
                     p(
@@ -957,7 +944,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { repository.setIntPreference(prefKey, value) }
         val param =
             if (isSpk) ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_BARK else ViperParams.PARAM_HP_SPECTRUM_EXTENSION_BARK
-        dispatchInt(param, VSE_BARK_VALUES.getOrElse(value) { 7600 })
+        dispatchInt(param, value)
     }
 
     fun setVseExciter(value: Int) {
@@ -1195,8 +1182,7 @@ class MainViewModel @Inject constructor(
                     p(
                         ViperParams.PARAM_HP_FIELD_SURROUND_WIDENING,
                         ViperParams.PARAM_SPK_FIELD_SURROUND_WIDENING
-                    ),
-                    intArrayOf(EffectDispatcher.FIELD_SURROUND_WIDENING_VALUES.getOrElse(vals.widening) { 0 })
+                    ), intArrayOf(EffectDispatcher.fieldSurroundWideningToRaw(vals.widening))
                 ),
                 ParamEntry(
                     p(
@@ -1226,7 +1212,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { repository.setIntPreference(prefKey, value) }
         val param =
             if (isSpk) ViperParams.PARAM_SPK_FIELD_SURROUND_WIDENING else ViperParams.PARAM_HP_FIELD_SURROUND_WIDENING
-        dispatchInt(param, FIELD_SURROUND_WIDENING_VALUES.getOrElse(value) { 0 })
+        dispatchInt(param, EffectDispatcher.fieldSurroundWideningToRaw(value))
     }
 
     fun setFieldSurroundMidImage(value: Int) {
@@ -1285,8 +1271,7 @@ class MainViewModel @Inject constructor(
                     p(
                         ViperParams.PARAM_HP_DIFF_SURROUND_DELAY,
                         ViperParams.PARAM_SPK_DIFF_SURROUND_DELAY
-                    ),
-                    intArrayOf(EffectDispatcher.DIFF_SURROUND_DELAY_VALUES.getOrElse(vals.delay) { 500 })
+                    ), intArrayOf(EffectDispatcher.diffSurroundDelayToRaw(vals.delay))
                 ),
                 ParamEntry(
                     p(
@@ -1310,7 +1295,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { repository.setIntPreference(prefKey, value) }
         val param =
             if (isSpk) ViperParams.PARAM_SPK_DIFF_SURROUND_DELAY else ViperParams.PARAM_HP_DIFF_SURROUND_DELAY
-        dispatchInt(param, DIFF_SURROUND_DELAY_VALUES.getOrElse(value) { 500 })
+        dispatchInt(param, EffectDispatcher.diffSurroundDelayToRaw(value))
     }
 
     fun setDiffSurroundReverse(reverse: Boolean) {
@@ -1740,7 +1725,7 @@ class MainViewModel @Inject constructor(
                 ),
                 ParamEntry(
                     p(ViperParams.PARAM_HP_BASS_GAIN, ViperParams.PARAM_SPK_BASS_GAIN),
-                    intArrayOf(EffectDispatcher.bassGainToRaw(vals.gain))
+                    intArrayOf(vals.gain)
                 ),
                 ParamEntry(
                     p(
@@ -1779,7 +1764,7 @@ class MainViewModel @Inject constructor(
             if (isSpk) "spk_${ViperParams.PARAM_SPK_BASS_GAIN}" else "${ViperParams.PARAM_HP_BASS_GAIN}"
         viewModelScope.launch { repository.setIntPreference(prefKey, value) }
         val param = if (isSpk) ViperParams.PARAM_SPK_BASS_GAIN else ViperParams.PARAM_HP_BASS_GAIN
-        dispatchInt(param, EffectDispatcher.bassGainToRaw(value))
+        dispatchInt(param, value)
     }
 
     fun setBassAntiPop(enabled: Boolean) {
@@ -1827,7 +1812,7 @@ class MainViewModel @Inject constructor(
                     p(
                         ViperParams.PARAM_HP_BASS_MONO_GAIN,
                         ViperParams.PARAM_SPK_BASS_MONO_GAIN
-                    ), intArrayOf(EffectDispatcher.bassGainToRaw(vals.gain))
+                    ), intArrayOf(vals.gain)
                 ),
                 ParamEntry(
                     p(
@@ -1872,7 +1857,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { repository.setIntPreference(prefKey, value) }
         val param =
             if (isSpk) ViperParams.PARAM_SPK_BASS_MONO_GAIN else ViperParams.PARAM_HP_BASS_MONO_GAIN
-        dispatchInt(param, EffectDispatcher.bassGainToRaw(value))
+        dispatchInt(param, value)
     }
 
     fun setBassMonoAntiPop(enabled: Boolean) {
@@ -1910,7 +1895,7 @@ class MainViewModel @Inject constructor(
                 ),
                 ParamEntry(
                     p(ViperParams.PARAM_HP_CLARITY_GAIN, ViperParams.PARAM_SPK_CLARITY_GAIN),
-                    intArrayOf(EffectDispatcher.clarityGainToRaw(vals.gain))
+                    intArrayOf(vals.gain)
                 )
             )
         )
@@ -1934,7 +1919,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { repository.setIntPreference(prefKey, value) }
         val param =
             if (isSpk) ViperParams.PARAM_SPK_CLARITY_GAIN else ViperParams.PARAM_HP_CLARITY_GAIN
-        dispatchInt(param, EffectDispatcher.clarityGainToRaw(value))
+        dispatchInt(param, value)
     }
 
     fun setCureEnabled(enabled: Boolean) {

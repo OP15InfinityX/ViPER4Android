@@ -557,24 +557,14 @@ class ViperService : LifecycleService() {
     }
 
     private fun collectHeadphoneParams(params: MutableList<ParamEntry>, state: MainUiState) {
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_HP_OUTPUT_VOLUME,
-                intArrayOf(EffectDispatcher.OUTPUT_VOLUME_VALUES.getOrElse(state.out.hp.volume) { 100 })
-            )
-        )
+        params.add(ParamEntry(ViperParams.PARAM_HP_OUTPUT_VOLUME, intArrayOf(state.out.hp.volume)))
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_CHANNEL_PAN,
                 intArrayOf(state.out.hp.channelPan)
             )
         )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_HP_LIMITER,
-                intArrayOf(EffectDispatcher.OUTPUT_DB_VALUES.getOrElse(state.out.hp.limiter) { 100 })
-            )
-        )
+        params.add(ParamEntry(ViperParams.PARAM_HP_LIMITER, intArrayOf(state.out.hp.limiter)))
 
         params.add(
             ParamEntry(
@@ -582,22 +572,17 @@ class ViperService : LifecycleService() {
                 intArrayOf(if (state.agc.hp.enabled) 1 else 0)
             )
         )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_HP_AGC_RATIO,
-                intArrayOf(EffectDispatcher.PLAYBACK_GAIN_RATIO_VALUES.getOrElse(state.agc.hp.strength) { 50 })
-            )
-        )
+        params.add(ParamEntry(ViperParams.PARAM_HP_AGC_RATIO, intArrayOf(state.agc.hp.strength)))
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_AGC_MAX_SCALER,
-                intArrayOf(EffectDispatcher.MULTI_FACTOR_VALUES.getOrElse(state.agc.hp.maxGain) { 100 })
+                intArrayOf(state.agc.hp.maxGain)
             )
         )
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_AGC_VOLUME,
-                intArrayOf(EffectDispatcher.OUTPUT_DB_VALUES.getOrElse(state.agc.hp.outputThreshold) { 100 })
+                intArrayOf(state.agc.hp.outputThreshold)
             )
         )
 
@@ -720,7 +705,7 @@ class ViperService : LifecycleService() {
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_SPECTRUM_EXTENSION_BARK,
-                intArrayOf(EffectDispatcher.VSE_BARK_VALUES.getOrElse(state.vse.hp.strength) { 7600 })
+                intArrayOf(state.vse.hp.strength)
             )
         )
         params.add(
@@ -766,7 +751,7 @@ class ViperService : LifecycleService() {
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_FIELD_SURROUND_WIDENING,
-                intArrayOf(EffectDispatcher.FIELD_SURROUND_WIDENING_VALUES.getOrElse(state.fieldSurround.hp.widening) { 0 })
+                intArrayOf(EffectDispatcher.fieldSurroundWideningToRaw(state.fieldSurround.hp.widening))
             )
         )
         params.add(
@@ -791,7 +776,7 @@ class ViperService : LifecycleService() {
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_DIFF_SURROUND_DELAY,
-                intArrayOf(EffectDispatcher.DIFF_SURROUND_DELAY_VALUES.getOrElse(state.diffSurround.hp.delay) { 500 })
+                intArrayOf(EffectDispatcher.diffSurroundDelayToRaw(state.diffSurround.hp.delay))
             )
         )
         params.add(
@@ -885,12 +870,7 @@ class ViperService : LifecycleService() {
                 intArrayOf(EffectDispatcher.bassFrequencyToRaw(state.bass.hp.frequency))
             )
         )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_HP_BASS_GAIN,
-                intArrayOf(EffectDispatcher.bassGainToRaw(state.bass.hp.gain))
-            )
-        )
+        params.add(ParamEntry(ViperParams.PARAM_HP_BASS_GAIN, intArrayOf(state.bass.hp.gain)))
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_BASS_ANTI_POP,
@@ -919,7 +899,7 @@ class ViperService : LifecycleService() {
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_BASS_MONO_GAIN,
-                intArrayOf(EffectDispatcher.bassGainToRaw(state.bassMono.hp.gain))
+                intArrayOf(state.bassMono.hp.gain)
             )
         )
         params.add(
@@ -939,7 +919,7 @@ class ViperService : LifecycleService() {
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_CLARITY_GAIN,
-                intArrayOf(EffectDispatcher.clarityGainToRaw(state.clarity.hp.gain))
+                intArrayOf(state.clarity.hp.gain)
             )
         )
 
@@ -969,7 +949,7 @@ class ViperService : LifecycleService() {
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_OUTPUT_VOLUME,
-                intArrayOf(EffectDispatcher.OUTPUT_VOLUME_VALUES.getOrElse(state.out.spk.volume) { 100 })
+                intArrayOf(state.out.spk.volume)
             )
         )
         params.add(
@@ -978,12 +958,7 @@ class ViperService : LifecycleService() {
                 intArrayOf(state.out.spk.channelPan)
             )
         )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_LIMITER,
-                intArrayOf(EffectDispatcher.OUTPUT_DB_VALUES.getOrElse(state.out.spk.limiter) { 100 })
-            )
-        )
+        params.add(ParamEntry(ViperParams.PARAM_SPK_LIMITER, intArrayOf(state.out.spk.limiter)))
 
         params.add(
             ParamEntry(
@@ -991,22 +966,17 @@ class ViperService : LifecycleService() {
                 intArrayOf(if (state.agc.spk.enabled) 1 else 0)
             )
         )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_AGC_RATIO,
-                intArrayOf(EffectDispatcher.PLAYBACK_GAIN_RATIO_VALUES.getOrElse(state.agc.spk.strength) { 50 })
-            )
-        )
+        params.add(ParamEntry(ViperParams.PARAM_SPK_AGC_RATIO, intArrayOf(state.agc.spk.strength)))
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_AGC_MAX_SCALER,
-                intArrayOf(EffectDispatcher.MULTI_FACTOR_VALUES.getOrElse(state.agc.spk.maxGain) { 100 })
+                intArrayOf(state.agc.spk.maxGain)
             )
         )
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_AGC_VOLUME,
-                intArrayOf(EffectDispatcher.OUTPUT_DB_VALUES.getOrElse(state.agc.spk.outputThreshold) { 100 })
+                intArrayOf(state.agc.spk.outputThreshold)
             )
         )
 
@@ -1193,7 +1163,7 @@ class ViperService : LifecycleService() {
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_BARK,
-                intArrayOf(EffectDispatcher.VSE_BARK_VALUES.getOrElse(state.vse.spk.strength) { 7600 })
+                intArrayOf(state.vse.spk.strength)
             )
         )
         params.add(
@@ -1212,7 +1182,7 @@ class ViperService : LifecycleService() {
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_FIELD_SURROUND_WIDENING,
-                intArrayOf(EffectDispatcher.FIELD_SURROUND_WIDENING_VALUES.getOrElse(state.fieldSurround.spk.widening) { 0 })
+                intArrayOf(EffectDispatcher.fieldSurroundWideningToRaw(state.fieldSurround.spk.widening))
             )
         )
         params.add(
@@ -1244,7 +1214,7 @@ class ViperService : LifecycleService() {
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_DIFF_SURROUND_DELAY,
-                intArrayOf(EffectDispatcher.DIFF_SURROUND_DELAY_VALUES.getOrElse(state.diffSurround.spk.delay) { 500 })
+                intArrayOf(EffectDispatcher.diffSurroundDelayToRaw(state.diffSurround.spk.delay))
             )
         )
         params.add(
@@ -1304,7 +1274,7 @@ class ViperService : LifecycleService() {
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_BASS_GAIN,
-                intArrayOf(EffectDispatcher.bassGainToRaw(state.bass.spk.gain))
+                intArrayOf(state.bass.spk.gain)
             )
         )
         params.add(
@@ -1335,7 +1305,7 @@ class ViperService : LifecycleService() {
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_BASS_MONO_GAIN,
-                intArrayOf(EffectDispatcher.bassGainToRaw(state.bassMono.spk.gain))
+                intArrayOf(state.bassMono.spk.gain)
             )
         )
         params.add(
@@ -1360,7 +1330,7 @@ class ViperService : LifecycleService() {
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_CLARITY_GAIN,
-                intArrayOf(EffectDispatcher.clarityGainToRaw(state.clarity.spk.gain))
+                intArrayOf(state.clarity.spk.gain)
             )
         )
 

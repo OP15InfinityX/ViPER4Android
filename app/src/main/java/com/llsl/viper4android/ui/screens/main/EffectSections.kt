@@ -72,14 +72,12 @@ fun MasterLimiterSection(state: MainUiState, viewModel: MainViewModel, isSpkMode
         icon = Icons.AutoMirrored.Filled.VolumeUp,
         initiallyExpanded = true
     ) {
-        val gainPct = MainViewModel.OUTPUT_VOLUME_VALUES.getOrElse(outputVolume) { 100 }
-        val gainDb = if (gainPct > 0) 20.0 * log10(gainPct / 100.0) else -99.9
+        val gainDb = if (outputVolume > 0) 20.0 * log10(outputVolume / 100.0) else -99.9
         LabeledSlider(
             label = stringResource(R.string.label_volume),
             value = outputVolume.toFloat(),
             onValueChange = { onOutputVolumeChange(it.roundToInt()) },
-            valueRange = 0f..21f,
-            steps = 20,
+            valueRange = 1f..200f,
             valueLabel = "${"%.1f".format(gainDb)}dB"
         )
         if (!isSpkMode) {
@@ -94,14 +92,12 @@ fun MasterLimiterSection(state: MainUiState, viewModel: MainViewModel, isSpkMode
                 valueLabel = "${left}:${right}"
             )
         }
-        val limPct = MainViewModel.OUTPUT_DB_VALUES.getOrElse(limiter) { 100 }
-        val limDb = if (limPct > 0) 20.0 * log10(limPct / 100.0) else -99.9
+        val limDb = if (limiter > 0) 20.0 * log10(limiter / 100.0) else -99.9
         LabeledSlider(
             label = stringResource(R.string.label_limiter),
             value = limiter.toFloat(),
             onValueChange = { onLimiterChange(it.roundToInt()) },
-            valueRange = 0f..5f,
-            steps = 4,
+            valueRange = 30f..100f,
             valueLabel = "${"%.1f".format(limDb)}dB"
         )
     }
@@ -130,24 +126,22 @@ fun PlaybackGainSection(state: MainUiState, viewModel: MainViewModel, isSpkMode:
             label = stringResource(R.string.label_agc_strength),
             value = strength.toFloat(),
             onValueChange = { onStrengthChange(it.roundToInt()) },
-            valueRange = 0f..2f,
-            steps = 1
+            valueRange = 50f..300f,
+            valueLabel = "${"%.1f".format(strength / 100.0)}x"
         )
         LabeledSlider(
             label = stringResource(R.string.label_agc_max_gain),
             value = maxGain.toFloat(),
             onValueChange = { onMaxGainChange(it.roundToInt()) },
-            valueRange = 0f..10f,
-            steps = 9
+            valueRange = 100f..1000f,
+            valueLabel = "${"%.1f".format(maxGain / 100.0)}x"
         )
-        val threshPct = MainViewModel.OUTPUT_DB_VALUES.getOrElse(threshold) { 100 }
-        val threshDb = if (threshPct > 0) 20.0 * log10(threshPct / 100.0) else -99.9
+        val threshDb = if (threshold > 0) 20.0 * log10(threshold / 100.0) else -99.9
         LabeledSlider(
             label = stringResource(R.string.label_agc_output_threshold),
             value = threshold.toFloat(),
             onValueChange = { onThresholdChange(it.roundToInt()) },
-            valueRange = 0f..5f,
-            steps = 4,
+            valueRange = 30f..100f,
             valueLabel = "${"%.1f".format(threshDb)}dB"
         )
     }
@@ -211,7 +205,7 @@ fun FetCompressorSection(state: MainUiState, viewModel: MainViewModel, isSpkMode
             value = ratio / 100f,
             onValueChange = { onRatioChange((it * 100f).roundToInt()) },
             valueRange = 0f..2f,
-            valueLabel = String.format(Locale.US, "%.2f", ratio / 100.0)
+            valueLabel = String.format(Locale.US, "%.1f", ratio / 100.0)
         )
         LabeledSwitch(
             label = stringResource(R.string.label_fet_auto_knee),
@@ -231,7 +225,7 @@ fun FetCompressorSection(state: MainUiState, viewModel: MainViewModel, isSpkMode
             value = (kneeMulti / 100f * 4f),
             onValueChange = { onKneeMultiChange((it / 4f * 100f).roundToInt()) },
             valueRange = 0f..4f,
-            valueLabel = String.format(Locale.US, "%.2fx", kneeMulti / 100.0 * 4.0)
+            valueLabel = String.format(Locale.US, "%.1fx", kneeMulti / 100.0 * 4.0)
         )
         LabeledSwitch(
             label = stringResource(R.string.label_fet_auto_gain),
@@ -364,9 +358,9 @@ fun SpectrumExtensionSection(
             label = stringResource(R.string.label_vse_strength),
             value = strength.toFloat(),
             onValueChange = { onStrengthChange(it.roundToInt()) },
-            valueRange = 0f..10f,
-            steps = 9,
-            valueLabel = "$strength"
+            valueRange = 2200f..8200f,
+            steps = 1199,
+            valueLabel = "$strength Hz"
         )
         LabeledSlider(
             label = stringResource(R.string.label_vse_exciter),
@@ -507,7 +501,8 @@ fun FieldSurroundSection(state: MainUiState, viewModel: MainViewModel, isSpkMode
             value = widening.toFloat(),
             onValueChange = { onWideningChange(it.roundToInt()) },
             valueRange = 0f..8f,
-            steps = 7
+            steps = 7,
+            valueLabel = "$widening"
         )
         LabeledSlider(
             label = stringResource(R.string.label_fs_mid_image),
@@ -537,8 +532,6 @@ fun DiffSurroundSection(state: MainUiState, viewModel: MainViewModel, isSpkMode:
     val onDelayChange = viewModel::setDiffSurroundDelay
     val onReverseChange = viewModel::setDiffSurroundReverse
 
-    val delayValue = MainViewModel.DIFF_SURROUND_DELAY_VALUES.getOrElse(delay) { 500 }
-
     EffectSection(
         title = stringResource(R.string.section_differential_surround),
         enabled = enabled,
@@ -549,9 +542,9 @@ fun DiffSurroundSection(state: MainUiState, viewModel: MainViewModel, isSpkMode:
             label = stringResource(R.string.label_ds_delay),
             value = delay.toFloat(),
             onValueChange = { onDelayChange(it.roundToInt()) },
-            valueRange = 0f..19f,
+            valueRange = 1f..20f,
             steps = 18,
-            valueLabel = "${delayValue / 100}ms"
+            valueLabel = "$delay ms"
         )
         LabeledSwitch(
             label = stringResource(R.string.label_diff_surround_reverse),
@@ -638,13 +631,15 @@ fun ReverberationSection(state: MainUiState, viewModel: MainViewModel, isSpkMode
             label = stringResource(R.string.label_reverb_wet),
             value = wet.toFloat(),
             onValueChange = { onWetChange(it.roundToInt()) },
-            valueRange = 0f..100f
+            valueRange = 0f..100f,
+            valueLabel = "${wet}%"
         )
         LabeledSlider(
             label = stringResource(R.string.label_reverb_dry),
             value = dry.toFloat(),
             onValueChange = { onDryChange(it.roundToInt()) },
-            valueRange = 0f..100f
+            valueRange = 0f..100f,
+            valueLabel = "${dry}%"
         )
     }
 }
@@ -757,7 +752,7 @@ fun DynamicSystemSection(state: MainUiState, viewModel: MainViewModel, isSpkMode
             value = yLow.toFloat(),
             onValueChange = { onYLowChange(it.roundToInt()) },
             valueRange = 0f..200f,
-            steps = (200 / 5) - 1,
+            steps = 199,
             valueLabel = "$yLow Hz"
         )
 
@@ -885,15 +880,8 @@ fun ViperBassSection(state: MainUiState, viewModel: MainViewModel, isSpkMode: Bo
             label = stringResource(R.string.label_bass_gain),
             value = gain.toFloat(),
             onValueChange = { onGainChange(it.roundToInt()) },
-            valueRange = 0f..19f,
-            steps = 18,
-            valueLabel = "${
-                if (mode == 2) {
-                    MainViewModel.BASS_SUBWOOFER_GAIN_DB_LABELS.getOrElse(gain) { "--" }
-                } else {
-                    MainViewModel.BASS_GAIN_DB_LABELS.getOrElse(gain) { "--" }
-                }
-            }dB"
+            valueRange = 50f..1000f,
+            valueLabel = "${"%.1f".format(gain / 100.0)}x"
         )
         LabeledSwitch(
             label = stringResource(R.string.label_bass_anti_pop),
@@ -950,15 +938,8 @@ fun ViperBassMonoSection(state: MainUiState, viewModel: MainViewModel, isSpkMode
             label = stringResource(R.string.label_bass_gain),
             value = gain.toFloat(),
             onValueChange = { onGainChange(it.roundToInt()) },
-            valueRange = 0f..19f,
-            steps = 18,
-            valueLabel = "${
-                if (mode == 2) {
-                    MainViewModel.BASS_SUBWOOFER_GAIN_DB_LABELS.getOrElse(gain) { "--" }
-                } else {
-                    MainViewModel.BASS_GAIN_DB_LABELS.getOrElse(gain) { "--" }
-                }
-            }dB"
+            valueRange = 50f..1000f,
+            valueLabel = "${"%.1f".format(gain / 100.0)}x"
         )
         LabeledSwitch(
             label = stringResource(R.string.label_bass_anti_pop),
@@ -1001,15 +982,8 @@ fun ViperClaritySection(state: MainUiState, viewModel: MainViewModel, isSpkMode:
             label = stringResource(R.string.label_clarity_gain),
             value = gain.toFloat(),
             onValueChange = { onGainChange(it.roundToInt()) },
-            valueRange = 0f..9f,
-            steps = 8,
-            valueLabel = "${
-                MainViewModel.CLARITY_GAIN_DB_LABELS.getOrElse(gain) {
-                    "%.1f".format(
-                        gain * 0.5
-                    )
-                }
-            }dB"
+            valueRange = 0f..450f,
+            valueLabel = "${"%.1f".format(gain / 100.0)}x"
         )
     }
 }

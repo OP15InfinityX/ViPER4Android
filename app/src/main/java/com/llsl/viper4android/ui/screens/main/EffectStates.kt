@@ -5,9 +5,9 @@ import com.llsl.viper4android.data.model.DsPreset
 import com.llsl.viper4android.data.model.EqPreset
 
 data class OutputValues(
-    val volume: Int = 11,
+    val volume: Int = 100,
     val channelPan: Int = 0,
-    val limiter: Int = 5
+    val limiter: Int = 100
 )
 
 data class OutputState(
@@ -24,9 +24,9 @@ data class OutputState(
 
 data class AgcValues(
     val enabled: Boolean = false,
-    val strength: Int = 0,
-    val maxGain: Int = 3,
-    val outputThreshold: Int = 3
+    val strength: Int = 100,
+    val maxGain: Int = 100,
+    val outputThreshold: Int = 100
 )
 
 data class AgcState(
@@ -92,7 +92,7 @@ data class DdcState(
 
 data class VseValues(
     val enabled: Boolean = false,
-    val strength: Int = 10,
+    val strength: Int = 7600,
     val exciter: Int = 0
 )
 
@@ -171,7 +171,7 @@ data class FieldSurroundState(
 
 data class DiffSurroundValues(
     val enabled: Boolean = false,
-    val delay: Int = 4,
+    val delay: Int = 5,
     val reverse: Boolean = false,
     val wetDryMix: Int = 100,
     val lpCutoff: Int = 0
@@ -263,7 +263,7 @@ data class BassValues(
     val enabled: Boolean = false,
     val mode: Int = 0,
     val frequency: Int = 55,
-    val gain: Int = 0,
+    val gain: Int = 50,
     val antiPop: Boolean = true
 )
 
@@ -283,7 +283,7 @@ data class BassMonoValues(
     val enabled: Boolean = false,
     val mode: Int = 0,
     val frequency: Int = 55,
-    val gain: Int = 0,
+    val gain: Int = 50,
     val antiPop: Boolean = true
 )
 
@@ -302,7 +302,7 @@ data class BassMonoState(
 data class ClarityValues(
     val enabled: Boolean = false,
     val mode: Int = 0,
-    val gain: Int = 1
+    val gain: Int = 50
 )
 
 data class ClarityState(
