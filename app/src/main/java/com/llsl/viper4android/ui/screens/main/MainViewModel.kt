@@ -63,6 +63,7 @@ data class MainUiState(
     val out: OutputState = OutputState(),
     val agc: AgcState = AgcState(),
     val fet: FetState = FetState(),
+    val mbc: MbcState = MbcState(),
     val ddc: DdcState = DdcState(),
     val vse: VseState = VseState(),
     val eq: EqState = EqState(),
@@ -445,6 +446,58 @@ class MainViewModel @Inject constructor(
             FileLogger.e("ViewModel", "Failed to prepare kernel: $fileName", e)
             null
         }
+    }
+
+    private fun parseInts(s: String, default: Int, count: Int = 5): List<Int> =
+        s.split(";").map { it.toIntOrNull() ?: default }.let {
+            if (it.size >= count) it.take(count) else it + List(count - it.size) { default }
+        }
+
+    private fun parseInts(s: String, default: Int, defaults: List<Int>): List<Int> =
+        s.split(";").mapIndexed { i, v -> v.toIntOrNull() ?: defaults.getOrElse(i) { default } }
+            .let {
+                if (it.size >= defaults.size) it.take(defaults.size) else it + defaults.drop(it.size)
+            }
+
+    private fun parseBools(s: String, default: Boolean = true, count: Int = 5): List<Boolean> =
+        s.split(";").map { (it.toIntOrNull() ?: if (default) 1 else 0) != 0 }.let {
+            if (it.size >= count) it.take(count) else it + List(count - it.size) { default }
+        }
+
+    private fun updateInt(
+        current: String,
+        index: Int,
+        value: Int,
+        default: Int,
+        count: Int = 5
+    ): String {
+        val list = parseInts(current, default, count).toMutableList()
+        list[index] = value
+        return list.joinToString(";")
+    }
+
+    private fun updateInt(
+        current: String,
+        index: Int,
+        value: Int,
+        default: Int,
+        defaults: List<Int>
+    ): String {
+        val list = parseInts(current, default, defaults).toMutableList()
+        list[index] = value
+        return list.joinToString(";")
+    }
+
+    private fun updateBool(
+        current: String,
+        index: Int,
+        value: Boolean,
+        default: Boolean = true,
+        count: Int = 5
+    ): String {
+        val list = parseBools(current, default, count).toMutableList()
+        list[index] = value
+        return list.joinToString(";") { if (it) "1" else "0" }
     }
 
     fun setMasterEnabled(enabled: Boolean) {
@@ -862,6 +915,491 @@ class MainViewModel @Inject constructor(
         val param =
             if (isSpk) ViperParams.PARAM_SPK_FET_COMPRESSOR_NO_CLIP else ViperParams.PARAM_HP_FET_COMPRESSOR_NO_CLIP
         saveAndDispatchFetBool(prefKey, param, value)
+    }
+
+    private fun isMbcBandEnabled(band: Int): Boolean =
+        parseBools(_uiState.value.mbc.forType(activeDeviceType).bandEnables).getOrElse(band) { true }
+
+    fun setMbcEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(enabled = enabled) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        val prefKey =
+            if (isSpk) "${ViperParams.PARAM_SPK_MULTIBAND_COMP_ENABLE}" else "${ViperParams.PARAM_HP_MULTIBAND_COMP_ENABLE}"
+        viewModelScope.launch { repository.setBooleanPreference(prefKey, enabled) }
+        val vals = _uiState.value.mbc.forType(activeDeviceType)
+        val p = { hp: Int, spk: Int -> if (isSpk) spk else hp }
+        val entries = mutableListOf<ParamEntry>()
+        entries.add(
+            ParamEntry(
+                p(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_COUNT,
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_COUNT
+                ), intArrayOf(5)
+            )
+        )
+        val crossovers = parseInts(vals.crossovers, 0, listOf(120, 500, 4000, 8000))
+        for (i in crossovers.indices) entries.add(
+            ParamEntry(
+                p(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_CROSSOVER_FREQ,
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_CROSSOVER_FREQ
+                ), intArrayOf(i, crossovers[i])
+            )
+        )
+        val bandEnables = parseBools(vals.bandEnables)
+        val thresholds = parseInts(vals.thresholds, -18)
+        val ratios = parseInts(vals.ratios, 50)
+        val gains = parseInts(vals.gains, 24)
+        val attacks = parseInts(vals.attacks, 1)
+        val releases = parseInts(vals.releases, 100)
+        val knees = parseInts(vals.knees, 0)
+        val autoGains = parseBools(vals.autoGains)
+        val autoAttacks = parseBools(vals.autoAttacks)
+        val autoReleases = parseBools(vals.autoReleases)
+        for (b in 0..4) {
+            entries.add(
+                ParamEntry(
+                    p(
+                        ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_ENABLE,
+                        ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_ENABLE
+                    ), intArrayOf(b, if (bandEnables[b]) 100 else 0)
+                )
+            )
+            entries.add(
+                ParamEntry(
+                    p(
+                        ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_THRESHOLD,
+                        ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_THRESHOLD
+                    ), intArrayOf(b, EffectDispatcher.fetThresholdToRaw(thresholds[b]))
+                )
+            )
+            entries.add(
+                ParamEntry(
+                    p(
+                        ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_RATIO,
+                        ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_RATIO
+                    ), intArrayOf(b, ratios[b])
+                )
+            )
+            entries.add(
+                ParamEntry(
+                    p(
+                        ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_GAIN,
+                        ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_GAIN
+                    ), intArrayOf(b, EffectDispatcher.fetGainToRaw(gains[b]))
+                )
+            )
+            entries.add(
+                ParamEntry(
+                    p(
+                        ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_ATTACK,
+                        ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_ATTACK
+                    ), intArrayOf(b, EffectDispatcher.fetAttackMsToRaw(attacks[b]))
+                )
+            )
+            entries.add(
+                ParamEntry(
+                    p(
+                        ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_RELEASE,
+                        ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_RELEASE
+                    ), intArrayOf(b, EffectDispatcher.fetReleaseMsToRaw(releases[b]))
+                )
+            )
+            entries.add(
+                ParamEntry(
+                    p(
+                        ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_KNEE,
+                        ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_KNEE
+                    ), intArrayOf(b, EffectDispatcher.fetKneeToRaw(knees[b]))
+                )
+            )
+            entries.add(
+                ParamEntry(
+                    p(
+                        ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_GAIN,
+                        ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_GAIN
+                    ), intArrayOf(b, if (autoGains[b]) 100 else 0)
+                )
+            )
+            entries.add(
+                ParamEntry(
+                    p(
+                        ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_ATTACK,
+                        ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_ATTACK
+                    ), intArrayOf(b, if (autoAttacks[b]) 100 else 0)
+                )
+            )
+            entries.add(
+                ParamEntry(
+                    p(
+                        ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_RELEASE,
+                        ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_RELEASE
+                    ), intArrayOf(b, if (autoReleases[b]) 100 else 0)
+                )
+            )
+        }
+        entries.add(
+            ParamEntry(
+                p(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_ENABLE,
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_ENABLE
+                ), intArrayOf(if (enabled) 1 else 0)
+            )
+        )
+        viperService?.dispatchParamsBatch(entries)
+    }
+
+    fun setMbcBandEnable(band: Int, value: Boolean) {
+        val updated =
+            updateBool(_uiState.value.mbc.forType(activeDeviceType).bandEnables, band, value)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(bandEnables = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_band_enables" else "mbc_band_enables",
+                updated
+            )
+        }
+        val param =
+            if (isSpk) ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_ENABLE else ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_ENABLE
+        viperService?.dispatchParamsBatch(
+            listOf(
+                ParamEntry(
+                    param,
+                    intArrayOf(band, if (value) 100 else 0)
+                )
+            )
+        )
+    }
+
+    fun setMbcCrossover(index: Int, value: Int) {
+        val updated = updateInt(
+            _uiState.value.mbc.forType(activeDeviceType).crossovers,
+            index,
+            value,
+            0,
+            listOf(120, 500, 4000, 8000)
+        )
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(crossovers = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_crossovers" else "mbc_crossovers",
+                updated
+            )
+        }
+        val param =
+            if (isSpk) ViperParams.PARAM_SPK_MULTIBAND_COMP_CROSSOVER_FREQ else ViperParams.PARAM_HP_MULTIBAND_COMP_CROSSOVER_FREQ
+        viperService?.dispatchParamsBatch(listOf(ParamEntry(param, intArrayOf(index, value))))
+    }
+
+    fun setMbcBandThreshold(band: Int, value: Int) {
+        val updated =
+            updateInt(_uiState.value.mbc.forType(activeDeviceType).thresholds, band, value, -18)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(thresholds = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_thresholds" else "mbc_thresholds",
+                updated
+            )
+        }
+        if (isMbcBandEnabled(band)) {
+            val param =
+                if (isSpk) ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_THRESHOLD else ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_THRESHOLD
+            viperService?.dispatchParamsBatch(
+                listOf(
+                    ParamEntry(
+                        param,
+                        intArrayOf(band, EffectDispatcher.fetThresholdToRaw(value))
+                    )
+                )
+            )
+        }
+    }
+
+    fun setMbcBandRatio(band: Int, value: Int) {
+        val updated =
+            updateInt(_uiState.value.mbc.forType(activeDeviceType).ratios, band, value, 50)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(ratios = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_ratios" else "mbc_ratios",
+                updated
+            )
+        }
+        if (isMbcBandEnabled(band)) {
+            val param =
+                if (isSpk) ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_RATIO else ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_RATIO
+            viperService?.dispatchParamsBatch(listOf(ParamEntry(param, intArrayOf(band, value))))
+        }
+    }
+
+    fun setMbcBandGain(band: Int, value: Int) {
+        val updated =
+            updateInt(_uiState.value.mbc.forType(activeDeviceType).gains, band, value, 24)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(gains = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_gains" else "mbc_gains",
+                updated
+            )
+        }
+        if (isMbcBandEnabled(band)) {
+            val param =
+                if (isSpk) ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_GAIN else ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_GAIN
+            viperService?.dispatchParamsBatch(
+                listOf(
+                    ParamEntry(
+                        param,
+                        intArrayOf(band, EffectDispatcher.fetGainToRaw(value))
+                    )
+                )
+            )
+        }
+    }
+
+    fun setMbcBandKnee(band: Int, value: Int) {
+        val updated =
+            updateInt(_uiState.value.mbc.forType(activeDeviceType).knees, band, value, 0)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(knees = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_knees" else "mbc_knees",
+                updated
+            )
+        }
+        if (isMbcBandEnabled(band)) {
+            val param =
+                if (isSpk) ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_KNEE else ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_KNEE
+            viperService?.dispatchParamsBatch(
+                listOf(
+                    ParamEntry(
+                        param,
+                        intArrayOf(band, EffectDispatcher.fetKneeToRaw(value))
+                    )
+                )
+            )
+        }
+    }
+
+    fun setMbcBandKneeMulti(band: Int, value: Int) {
+        val updated =
+            updateInt(_uiState.value.mbc.forType(activeDeviceType).kneeMultis, band, value, 0)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(kneeMultis = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_knee_multis" else "mbc_knee_multis",
+                updated
+            )
+        }
+    }
+
+    fun setMbcBandAttack(band: Int, value: Int) {
+        val updated =
+            updateInt(_uiState.value.mbc.forType(activeDeviceType).attacks, band, value, 1)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(attacks = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_attacks" else "mbc_attacks",
+                updated
+            )
+        }
+        if (isMbcBandEnabled(band)) {
+            val param =
+                if (isSpk) ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_ATTACK else ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_ATTACK
+            viperService?.dispatchParamsBatch(
+                listOf(
+                    ParamEntry(
+                        param,
+                        intArrayOf(band, EffectDispatcher.fetAttackMsToRaw(value))
+                    )
+                )
+            )
+        }
+    }
+
+    fun setMbcBandMaxAttack(band: Int, value: Int) {
+        val updated =
+            updateInt(_uiState.value.mbc.forType(activeDeviceType).maxAttacks, band, value, 44)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(maxAttacks = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_max_attacks" else "mbc_max_attacks",
+                updated
+            )
+        }
+    }
+
+    fun setMbcBandRelease(band: Int, value: Int) {
+        val updated =
+            updateInt(_uiState.value.mbc.forType(activeDeviceType).releases, band, value, 100)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(releases = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_releases" else "mbc_releases",
+                updated
+            )
+        }
+        if (isMbcBandEnabled(band)) {
+            val param =
+                if (isSpk) ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_RELEASE else ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_RELEASE
+            viperService?.dispatchParamsBatch(
+                listOf(
+                    ParamEntry(
+                        param,
+                        intArrayOf(band, EffectDispatcher.fetReleaseMsToRaw(value))
+                    )
+                )
+            )
+        }
+    }
+
+    fun setMbcBandMaxRelease(band: Int, value: Int) {
+        val updated =
+            updateInt(_uiState.value.mbc.forType(activeDeviceType).maxReleases, band, value, 200)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(maxReleases = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_max_releases" else "mbc_max_releases",
+                updated
+            )
+        }
+    }
+
+    fun setMbcBandCrest(band: Int, value: Int) {
+        val updated =
+            updateInt(_uiState.value.mbc.forType(activeDeviceType).crests, band, value, 100)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(crests = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_crests" else "mbc_crests",
+                updated
+            )
+        }
+    }
+
+    fun setMbcBandAdapt(band: Int, value: Int) {
+        val updated =
+            updateInt(_uiState.value.mbc.forType(activeDeviceType).adapts, band, value, 50)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(adapts = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_adapts" else "mbc_adapts",
+                updated
+            )
+        }
+    }
+
+    fun setMbcBandAutoKnee(band: Int, value: Boolean) {
+        val updated =
+            updateBool(_uiState.value.mbc.forType(activeDeviceType).autoKnees, band, value)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(autoKnees = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_auto_knees" else "mbc_auto_knees",
+                updated
+            )
+        }
+    }
+
+    fun setMbcBandAutoGain(band: Int, value: Boolean) {
+        val updated =
+            updateBool(_uiState.value.mbc.forType(activeDeviceType).autoGains, band, value)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(autoGains = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_auto_gains" else "mbc_auto_gains",
+                updated
+            )
+        }
+        if (isMbcBandEnabled(band)) {
+            val param =
+                if (isSpk) ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_GAIN else ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_GAIN
+            viperService?.dispatchParamsBatch(
+                listOf(
+                    ParamEntry(
+                        param,
+                        intArrayOf(band, if (value) 100 else 0)
+                    )
+                )
+            )
+        }
+    }
+
+    fun setMbcBandAutoAttack(band: Int, value: Boolean) {
+        val updated =
+            updateBool(_uiState.value.mbc.forType(activeDeviceType).autoAttacks, band, value)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(autoAttacks = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_auto_attacks" else "mbc_auto_attacks",
+                updated
+            )
+        }
+        if (isMbcBandEnabled(band)) {
+            val param =
+                if (isSpk) ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_ATTACK else ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_ATTACK
+            viperService?.dispatchParamsBatch(
+                listOf(
+                    ParamEntry(
+                        param,
+                        intArrayOf(band, if (value) 100 else 0)
+                    )
+                )
+            )
+        }
+    }
+
+    fun setMbcBandAutoRelease(band: Int, value: Boolean) {
+        val updated =
+            updateBool(_uiState.value.mbc.forType(activeDeviceType).autoReleases, band, value)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(autoReleases = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_auto_releases" else "mbc_auto_releases",
+                updated
+            )
+        }
+        if (isMbcBandEnabled(band)) {
+            val param =
+                if (isSpk) ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_RELEASE else ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_RELEASE
+            viperService?.dispatchParamsBatch(
+                listOf(
+                    ParamEntry(
+                        param,
+                        intArrayOf(band, if (value) 100 else 0)
+                    )
+                )
+            )
+        }
+    }
+
+    fun setMbcBandNoClip(band: Int, value: Boolean) {
+        val updated =
+            updateBool(_uiState.value.mbc.forType(activeDeviceType).noClips, band, value)
+        _uiState.update { it.copy(mbc = it.mbc.updateType(activeDeviceType) { copy(noClips = updated) }) }
+        val isSpk = activeDeviceType == ViperParams.FX_TYPE_SPEAKER
+        viewModelScope.launch {
+            repository.setStringPreference(
+                if (isSpk) "spk_mbc_no_clips" else "mbc_no_clips",
+                updated
+            )
+        }
     }
 
     fun setDdcEnabled(enabled: Boolean) {

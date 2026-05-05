@@ -48,6 +48,15 @@
     <string name="label_fet_adapt">Adapt</string>
     <string name="label_fet_no_clip">No Clip</string>
 
+    <!-- Multiband Compressor -->
+    <string name="section_multiband_compressor">Multiband Compressor</string>
+    <string name="label_band_enabled">Band Enabled</string>
+    <string name="label_upper_crossover">Upper Crossover</string>
+    <string name="label_threshold">Threshold</string>
+    <string name="label_gain">Gain</string>
+    <string name="label_attack">Attack</string>
+    <string name="label_release">Release</string>
+
     <!-- DDC -->
     <string name="section_ddc">ViPER-DDC</string>
     <string name="label_ddc_device">Headset Correction</string>

@@ -557,6 +557,7 @@ class ViperService : LifecycleService() {
     }
 
     private fun collectHeadphoneParams(params: MutableList<ParamEntry>, state: MainUiState) {
+        // Output
         params.add(ParamEntry(ViperParams.PARAM_HP_OUTPUT_VOLUME, intArrayOf(state.out.hp.volume)))
         params.add(
             ParamEntry(
@@ -566,6 +567,7 @@ class ViperService : LifecycleService() {
         )
         params.add(ParamEntry(ViperParams.PARAM_HP_LIMITER, intArrayOf(state.out.hp.limiter)))
 
+        // AGC
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_AGC_ENABLE,
@@ -586,6 +588,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // FET Compressor
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_FET_COMPRESSOR_ENABLE,
@@ -689,6 +692,202 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Multiband Compressor
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_ENABLE,
+                intArrayOf(if (state.mbc.hp.enabled) 1 else 0)
+            )
+        )
+        params.add(ParamEntry(ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_COUNT, intArrayOf(5)))
+        val hpMbcCrossoverDefaults = intArrayOf(120, 500, 4000, 8000)
+        val hpMbcCrossovers = state.mbc.hp.crossovers.split(";")
+            .mapIndexed { i, v -> v.toIntOrNull() ?: hpMbcCrossoverDefaults.getOrElse(i) { 0 } }
+        for (i in hpMbcCrossoverDefaults.indices) {
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_CROSSOVER_FREQ,
+                    intArrayOf(i, hpMbcCrossovers.getOrElse(i) { hpMbcCrossoverDefaults[i] })
+                )
+            )
+        }
+        val hpMbcBandEnables =
+            state.mbc.hp.bandEnables.split(";").map { (it.toIntOrNull() ?: 1) != 0 }
+        for (b in 0 until 5) {
+            val bandEnabled = hpMbcBandEnables.getOrElse(b) { true }
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_ENABLE,
+                    intArrayOf(b, if (bandEnabled) 100 else 0)
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_THRESHOLD,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetThresholdToRaw(
+                            state.mbc.hp.thresholds.split(";").getOrNull(b)?.toIntOrNull() ?: -18
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_RATIO,
+                    intArrayOf(b, state.mbc.hp.ratios.split(";").getOrNull(b)?.toIntOrNull() ?: 50)
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_GAIN,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetGainToRaw(
+                            state.mbc.hp.gains.split(";").getOrNull(b)?.toIntOrNull() ?: 24
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_ATTACK,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetAttackMsToRaw(
+                            state.mbc.hp.attacks.split(";").getOrNull(b)?.toIntOrNull() ?: 1
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_RELEASE,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetReleaseMsToRaw(
+                            state.mbc.hp.releases.split(";").getOrNull(b)?.toIntOrNull() ?: 100
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_KNEE,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetKneeToRaw(
+                            state.mbc.hp.knees.split(";").getOrNull(b)?.toIntOrNull() ?: 0
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_GAIN,
+                    intArrayOf(
+                        b,
+                        if ((state.mbc.hp.autoGains.split(";").getOrNull(b)?.toIntOrNull()
+                                ?: 1) != 0
+                        ) 100 else 0
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_ATTACK,
+                    intArrayOf(
+                        b,
+                        if ((state.mbc.hp.autoAttacks.split(";").getOrNull(b)?.toIntOrNull()
+                                ?: 1) != 0
+                        ) 100 else 0
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_RELEASE,
+                    intArrayOf(
+                        b,
+                        if ((state.mbc.hp.autoReleases.split(";").getOrNull(b)?.toIntOrNull()
+                                ?: 1) != 0
+                        ) 100 else 0
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_KNEE,
+                    intArrayOf(
+                        b,
+                        if ((state.mbc.hp.autoKnees.split(";").getOrNull(b)?.toIntOrNull()
+                                ?: 1) != 0
+                        ) 100 else 0
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_KNEE_MULTI,
+                    intArrayOf(
+                        b,
+                        state.mbc.hp.kneeMultis.split(";").getOrNull(b)?.toIntOrNull() ?: 0
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_MAX_ATTACK,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetAttackMsToRaw(
+                            state.mbc.hp.maxAttacks.split(";").getOrNull(b)?.toIntOrNull() ?: 44
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_MAX_RELEASE,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetReleaseMsToRaw(
+                            state.mbc.hp.maxReleases.split(";").getOrNull(b)?.toIntOrNull() ?: 200
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_CREST,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetReleaseMsToRaw(
+                            state.mbc.hp.crests.split(";").getOrNull(b)?.toIntOrNull() ?: 100
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_ADAPT,
+                    intArrayOf(b, state.mbc.hp.adapts.split(";").getOrNull(b)?.toIntOrNull() ?: 50)
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_NO_CLIP,
+                    intArrayOf(
+                        b,
+                        if ((state.mbc.hp.noClips.split(";").getOrNull(b)?.toIntOrNull()
+                                ?: 1) != 0
+                        ) 100 else 0
+                    )
+                )
+            )
+        }
+
+        // DDC
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_DDC_ENABLE,
@@ -696,6 +895,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Spectrum Extension
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_SPECTRUM_EXTENSION_ENABLE,
@@ -715,6 +915,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // EQ
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_EQ_BAND_COUNT,
@@ -729,6 +930,7 @@ class ViperService : LifecycleService() {
         )
         collectEqBandParams(params, ViperParams.PARAM_HP_EQ_BAND_LEVEL, state.eq.hp.bands)
 
+        // Convolver
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_CONVOLVER_ENABLE,
@@ -742,6 +944,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Field Surround
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_FIELD_SURROUND_ENABLE,
@@ -767,6 +970,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Diff Surround
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_DIFF_SURROUND_ENABLE,
@@ -798,6 +1002,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Headphone Surround
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_HEADPHONE_SURROUND_ENABLE,
@@ -811,6 +1016,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Reverb
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_REVERB_ENABLE,
@@ -848,6 +1054,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Dynamic System
         collectDynamicSystemParams(
             params,
             state.dynamicSystem.hp.enabled,
@@ -862,6 +1069,7 @@ class ViperService : LifecycleService() {
             ViperParams.PARAM_HP_DYNAMIC_SYSTEM_SIDE_GAIN
         )
 
+        // Tube Simulator
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_TUBE_SIMULATOR_ENABLE,
@@ -869,6 +1077,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Bass
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_BASS_ENABLE,
@@ -890,6 +1099,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Bass Mono
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_BASS_MONO_ENABLE,
@@ -921,6 +1131,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Clarity
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_CLARITY_ENABLE,
@@ -935,6 +1146,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Cure
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_CURE_ENABLE,
@@ -948,6 +1160,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // AnalogX
         params.add(
             ParamEntry(
                 ViperParams.PARAM_HP_ANALOGX_ENABLE,
@@ -958,6 +1171,7 @@ class ViperService : LifecycleService() {
     }
 
     private fun collectSpeakerParams(params: MutableList<ParamEntry>, state: MainUiState) {
+        // Output
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_OUTPUT_VOLUME,
@@ -972,6 +1186,7 @@ class ViperService : LifecycleService() {
         )
         params.add(ParamEntry(ViperParams.PARAM_SPK_LIMITER, intArrayOf(state.out.spk.limiter)))
 
+        // AGC
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_AGC_ENABLE,
@@ -992,6 +1207,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // FET Compressor
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_FET_COMPRESSOR_ENABLE,
@@ -1095,19 +1311,230 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Multiband Compressor
         params.add(
             ParamEntry(
-                ViperParams.PARAM_SPK_CONVOLVER_ENABLE,
-                intArrayOf(if (state.convolver.spk.enabled && state.convolver.spk.kernel.isNotEmpty()) 1 else 0)
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_ENABLE,
+                intArrayOf(if (state.mbc.spk.enabled) 1 else 0)
             )
         )
+        params.add(ParamEntry(ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_COUNT, intArrayOf(5)))
+        val spkMbcCrossoverDefaults = intArrayOf(120, 500, 4000, 8000)
+        val spkMbcCrossovers = state.mbc.spk.crossovers.split(";")
+            .mapIndexed { i, v -> v.toIntOrNull() ?: spkMbcCrossoverDefaults.getOrElse(i) { 0 } }
+        for (i in spkMbcCrossoverDefaults.indices) {
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_CROSSOVER_FREQ,
+                    intArrayOf(i, spkMbcCrossovers.getOrElse(i) { spkMbcCrossoverDefaults[i] })
+                )
+            )
+        }
+        val spkMbcBandEnables =
+            state.mbc.spk.bandEnables.split(";").map { (it.toIntOrNull() ?: 1) != 0 }
+        for (b in 0 until 5) {
+            val bandEnabled = spkMbcBandEnables.getOrElse(b) { true }
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_ENABLE,
+                    intArrayOf(b, if (bandEnabled) 100 else 0)
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_THRESHOLD,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetThresholdToRaw(
+                            state.mbc.spk.thresholds.split(";").getOrNull(b)?.toIntOrNull() ?: -18
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_RATIO,
+                    intArrayOf(b, state.mbc.spk.ratios.split(";").getOrNull(b)?.toIntOrNull() ?: 50)
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_GAIN,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetGainToRaw(
+                            state.mbc.spk.gains.split(";").getOrNull(b)?.toIntOrNull() ?: 24
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_ATTACK,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetAttackMsToRaw(
+                            state.mbc.spk.attacks.split(";").getOrNull(b)?.toIntOrNull() ?: 1
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_RELEASE,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetReleaseMsToRaw(
+                            state.mbc.spk.releases.split(";").getOrNull(b)?.toIntOrNull() ?: 100
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_KNEE,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetKneeToRaw(
+                            state.mbc.spk.knees.split(";").getOrNull(b)?.toIntOrNull() ?: 0
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_GAIN,
+                    intArrayOf(
+                        b,
+                        if ((state.mbc.spk.autoGains.split(";").getOrNull(b)?.toIntOrNull()
+                                ?: 1) != 0
+                        ) 100 else 0
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_ATTACK,
+                    intArrayOf(
+                        b,
+                        if ((state.mbc.spk.autoAttacks.split(";").getOrNull(b)?.toIntOrNull()
+                                ?: 1) != 0
+                        ) 100 else 0
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_RELEASE,
+                    intArrayOf(
+                        b,
+                        if ((state.mbc.spk.autoReleases.split(";").getOrNull(b)?.toIntOrNull()
+                                ?: 1) != 0
+                        ) 100 else 0
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_KNEE,
+                    intArrayOf(
+                        b,
+                        if ((state.mbc.spk.autoKnees.split(";").getOrNull(b)?.toIntOrNull()
+                                ?: 1) != 0
+                        ) 100 else 0
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_KNEE_MULTI,
+                    intArrayOf(
+                        b,
+                        state.mbc.spk.kneeMultis.split(";").getOrNull(b)?.toIntOrNull() ?: 0
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_MAX_ATTACK,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetAttackMsToRaw(
+                            state.mbc.spk.maxAttacks.split(";").getOrNull(b)?.toIntOrNull() ?: 44
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_MAX_RELEASE,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetReleaseMsToRaw(
+                            state.mbc.spk.maxReleases.split(";").getOrNull(b)?.toIntOrNull() ?: 200
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_CREST,
+                    intArrayOf(
+                        b,
+                        EffectDispatcher.fetReleaseMsToRaw(
+                            state.mbc.spk.crests.split(";").getOrNull(b)?.toIntOrNull() ?: 100
+                        )
+                    )
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_ADAPT,
+                    intArrayOf(b, state.mbc.spk.adapts.split(";").getOrNull(b)?.toIntOrNull() ?: 50)
+                )
+            )
+            params.add(
+                ParamEntry(
+                    ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_NO_CLIP,
+                    intArrayOf(
+                        b,
+                        if ((state.mbc.spk.noClips.split(";").getOrNull(b)?.toIntOrNull()
+                                ?: 1) != 0
+                        ) 100 else 0
+                    )
+                )
+            )
+        }
+
+        // DDC
         params.add(
             ParamEntry(
-                ViperParams.PARAM_SPK_CONVOLVER_CROSS_CHANNEL,
-                intArrayOf(state.convolver.spk.crossChannel)
+                ViperParams.PARAM_SPK_DDC_ENABLE,
+                intArrayOf(if (state.ddc.spk.enabled && state.ddc.spk.device.isNotEmpty()) 1 else 0)
             )
         )
 
+        // Spectrum Extension
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_ENABLE,
+                intArrayOf(if (state.vse.spk.enabled) 1 else 0)
+            )
+        )
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_BARK,
+                intArrayOf(state.vse.spk.strength)
+            )
+        )
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_BARK_RECONSTRUCT,
+                intArrayOf(EffectDispatcher.vseExciterToRaw(state.vse.spk.exciter))
+            )
+        )
+
+        // EQ
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_EQ_BAND_COUNT,
@@ -1122,6 +1549,93 @@ class ViperService : LifecycleService() {
         )
         collectEqBandParams(params, ViperParams.PARAM_SPK_EQ_BAND_LEVEL, state.eq.spk.bands)
 
+        // Convolver
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_CONVOLVER_ENABLE,
+                intArrayOf(if (state.convolver.spk.enabled && state.convolver.spk.kernel.isNotEmpty()) 1 else 0)
+            )
+        )
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_CONVOLVER_CROSS_CHANNEL,
+                intArrayOf(state.convolver.spk.crossChannel)
+            )
+        )
+
+        // Field Surround
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_FIELD_SURROUND_ENABLE,
+                intArrayOf(if (state.fieldSurround.spk.enabled) 1 else 0)
+            )
+        )
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_FIELD_SURROUND_WIDENING,
+                intArrayOf(EffectDispatcher.fieldSurroundWideningToRaw(state.fieldSurround.spk.widening))
+            )
+        )
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_FIELD_SURROUND_MID_IMAGE,
+                intArrayOf(EffectDispatcher.fieldSurroundMidImageToRaw(state.fieldSurround.spk.midImage))
+            )
+        )
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_FIELD_SURROUND_DEPTH,
+                intArrayOf(EffectDispatcher.fieldSurroundDepthToRaw(state.fieldSurround.spk.depth))
+            )
+        )
+
+        // Diff Surround
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_DIFF_SURROUND_ENABLE,
+                intArrayOf(if (state.diffSurround.spk.enabled) 1 else 0)
+            )
+        )
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_DIFF_SURROUND_DELAY,
+                intArrayOf(EffectDispatcher.diffSurroundDelayToRaw(state.diffSurround.spk.delay))
+            )
+        )
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_DIFF_SURROUND_REVERSE,
+                intArrayOf(if (state.diffSurround.spk.reverse) 1 else 0)
+            )
+        )
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_DIFF_SURROUND_WET_DRY_MIX,
+                intArrayOf(state.diffSurround.spk.wetDryMix)
+            )
+        )
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_DIFF_SURROUND_LP_CUTOFF,
+                intArrayOf(state.diffSurround.spk.lpCutoff)
+            )
+        )
+
+        // Headphone Surround
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_HEADPHONE_SURROUND_ENABLE,
+                intArrayOf(if (state.vhe.spk.enabled) 1 else 0)
+            )
+        )
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_HEADPHONE_SURROUND_STRENGTH,
+                intArrayOf(state.vhe.spk.quality)
+            )
+        )
+
+        // Reverb
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_REVERB_ENABLE,
@@ -1159,108 +1673,7 @@ class ViperService : LifecycleService() {
             )
         )
 
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_DDC_ENABLE,
-                intArrayOf(if (state.ddc.spk.enabled && state.ddc.spk.device.isNotEmpty()) 1 else 0)
-            )
-        )
-
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_ENABLE,
-                intArrayOf(if (state.vse.spk.enabled) 1 else 0)
-            )
-        )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_BARK,
-                intArrayOf(state.vse.spk.strength)
-            )
-        )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_BARK_RECONSTRUCT,
-                intArrayOf(EffectDispatcher.vseExciterToRaw(state.vse.spk.exciter))
-            )
-        )
-
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_FIELD_SURROUND_ENABLE,
-                intArrayOf(if (state.fieldSurround.spk.enabled) 1 else 0)
-            )
-        )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_FIELD_SURROUND_WIDENING,
-                intArrayOf(EffectDispatcher.fieldSurroundWideningToRaw(state.fieldSurround.spk.widening))
-            )
-        )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_FIELD_SURROUND_MID_IMAGE,
-                intArrayOf(EffectDispatcher.fieldSurroundMidImageToRaw(state.fieldSurround.spk.midImage))
-            )
-        )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_FIELD_SURROUND_DEPTH,
-                intArrayOf(EffectDispatcher.fieldSurroundDepthToRaw(state.fieldSurround.spk.depth))
-            )
-        )
-
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_SPEAKER_CORRECTION_ENABLE,
-                intArrayOf(if (state.speakerCorrection.spk.enabled) 1 else 0)
-            )
-        )
-
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_DIFF_SURROUND_ENABLE,
-                intArrayOf(if (state.diffSurround.spk.enabled) 1 else 0)
-            )
-        )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_DIFF_SURROUND_DELAY,
-                intArrayOf(EffectDispatcher.diffSurroundDelayToRaw(state.diffSurround.spk.delay))
-            )
-        )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_DIFF_SURROUND_REVERSE,
-                intArrayOf(if (state.diffSurround.spk.reverse) 1 else 0)
-            )
-        )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_DIFF_SURROUND_WET_DRY_MIX,
-                intArrayOf(state.diffSurround.spk.wetDryMix)
-            )
-        )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_DIFF_SURROUND_LP_CUTOFF,
-                intArrayOf(state.diffSurround.spk.lpCutoff)
-            )
-        )
-
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_HEADPHONE_SURROUND_ENABLE,
-                intArrayOf(if (state.vhe.spk.enabled) 1 else 0)
-            )
-        )
-        params.add(
-            ParamEntry(
-                ViperParams.PARAM_SPK_HEADPHONE_SURROUND_STRENGTH,
-                intArrayOf(state.vhe.spk.quality)
-            )
-        )
-
+        // Dynamic System
         collectDynamicSystemParams(
             params,
             state.dynamicSystem.spk.enabled,
@@ -1275,6 +1688,7 @@ class ViperService : LifecycleService() {
             ViperParams.PARAM_SPK_DYNAMIC_SYSTEM_SIDE_GAIN
         )
 
+        // Tube Simulator
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_TUBE_SIMULATOR_ENABLE,
@@ -1282,6 +1696,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Bass
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_BASS_ENABLE,
@@ -1308,6 +1723,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Bass Mono
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_BASS_MONO_ENABLE,
@@ -1339,6 +1755,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Clarity
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_CLARITY_ENABLE,
@@ -1358,6 +1775,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // Cure
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_CURE_ENABLE,
@@ -1371,6 +1789,7 @@ class ViperService : LifecycleService() {
             )
         )
 
+        // AnalogX
         params.add(
             ParamEntry(
                 ViperParams.PARAM_SPK_ANALOGX_ENABLE,
@@ -1381,6 +1800,14 @@ class ViperService : LifecycleService() {
             ParamEntry(
                 ViperParams.PARAM_SPK_ANALOGX_MODE,
                 intArrayOf(state.analog.spk.mode)
+            )
+        )
+
+        // Speaker Correction
+        params.add(
+            ParamEntry(
+                ViperParams.PARAM_SPK_SPEAKER_CORRECTION_ENABLE,
+                intArrayOf(if (state.speakerCorrection.spk.enabled) 1 else 0)
             )
         )
     }

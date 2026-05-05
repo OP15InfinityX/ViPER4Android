@@ -330,21 +330,18 @@ object EffectDispatcher {
     }
 
     fun dispatchHeadphoneState(effect: ViperEffect, state: MainUiState) {
-        FileLogger.d(
-            "Dispatch",
-            "Dispatch: headphone outputVol=${state.out.hp.volume} pan=${state.out.hp.channelPan} limiter=${state.out.hp.limiter}"
-        )
+        // Output
         effect.setParameter(ViperParams.PARAM_HP_OUTPUT_VOLUME, state.out.hp.volume)
         effect.setParameter(ViperParams.PARAM_HP_CHANNEL_PAN, state.out.hp.channelPan)
         effect.setParameter(ViperParams.PARAM_HP_LIMITER, state.out.hp.limiter)
 
+        // AGC
         effect.setParameter(ViperParams.PARAM_HP_AGC_ENABLE, if (state.agc.hp.enabled) 1 else 0)
-        FileLogger.d("Dispatch", "AGC: ${if (state.agc.hp.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_HP_AGC_RATIO, state.agc.hp.strength)
         effect.setParameter(ViperParams.PARAM_HP_AGC_MAX_SCALER, state.agc.hp.maxGain)
         effect.setParameter(ViperParams.PARAM_HP_AGC_VOLUME, state.agc.hp.outputThreshold)
 
-        FileLogger.d("Dispatch", "FET: ${if (state.fet.hp.enabled) "ON" else "OFF"}")
+        // FET Compressor
         effect.setParameter(
             ViperParams.PARAM_HP_FET_COMPRESSOR_ENABLE,
             if (state.fet.hp.enabled) 100 else 0
@@ -405,45 +402,163 @@ object EffectDispatcher {
             if (state.fet.hp.noClip) 100 else 0
         )
 
-        effect.setParameter(ViperParams.PARAM_HP_DDC_ENABLE, if (state.ddc.hp.enabled) 1 else 0)
-        FileLogger.d("Dispatch", "DDC: ${if (state.ddc.hp.enabled) "ON" else "OFF"}")
+        // Multiband Compressor
+        effect.setParameter(
+            ViperParams.PARAM_HP_MULTIBAND_COMP_ENABLE,
+            if (state.mbc.hp.enabled) 1 else 0
+        )
+        effect.setParameter(ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_COUNT, 5)
+        val hpMbcCrossoverDefaults = intArrayOf(120, 500, 4000, 8000)
+        val hpMbcCrossovers = state.mbc.hp.crossovers.split(";")
+            .mapIndexed { i, v -> v.toIntOrNull() ?: hpMbcCrossoverDefaults.getOrElse(i) { 0 } }
+        for (i in hpMbcCrossoverDefaults.indices) {
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_CROSSOVER_FREQ,
+                i,
+                hpMbcCrossovers.getOrElse(i) { hpMbcCrossoverDefaults[i] })
+        }
+        val hpMbcBandEnables =
+            state.mbc.hp.bandEnables.split(";").map { (it.toIntOrNull() ?: 1) != 0 }
+        for (b in 0 until 5) {
+            val bandEnabled = hpMbcBandEnables.getOrElse(b) { true }
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_ENABLE,
+                b,
+                if (bandEnabled) 100 else 0
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_THRESHOLD,
+                b,
+                fetThresholdToRaw(
+                    state.mbc.hp.thresholds.split(";").getOrNull(b)?.toIntOrNull() ?: -18
+                )
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_RATIO,
+                b,
+                state.mbc.hp.ratios.split(";").getOrNull(b)?.toIntOrNull() ?: 50
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_GAIN,
+                b,
+                fetGainToRaw(state.mbc.hp.gains.split(";").getOrNull(b)?.toIntOrNull() ?: 24)
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_ATTACK,
+                b,
+                fetAttackMsToRaw(state.mbc.hp.attacks.split(";").getOrNull(b)?.toIntOrNull() ?: 1)
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_RELEASE,
+                b,
+                fetReleaseMsToRaw(
+                    state.mbc.hp.releases.split(";").getOrNull(b)?.toIntOrNull() ?: 100
+                )
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_KNEE,
+                b,
+                fetKneeToRaw(state.mbc.hp.knees.split(";").getOrNull(b)?.toIntOrNull() ?: 0)
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_GAIN,
+                b,
+                if ((state.mbc.hp.autoGains.split(";").getOrNull(b)?.toIntOrNull()
+                        ?: 1) != 0
+                ) 100 else 0
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_ATTACK,
+                b,
+                if ((state.mbc.hp.autoAttacks.split(";").getOrNull(b)?.toIntOrNull()
+                        ?: 1) != 0
+                ) 100 else 0
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_RELEASE,
+                b,
+                if ((state.mbc.hp.autoReleases.split(";").getOrNull(b)?.toIntOrNull()
+                        ?: 1) != 0
+                ) 100 else 0
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_KNEE,
+                b,
+                if ((state.mbc.hp.autoKnees.split(";").getOrNull(b)?.toIntOrNull()
+                        ?: 1) != 0
+                ) 100 else 0
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_KNEE_MULTI,
+                b,
+                state.mbc.hp.kneeMultis.split(";").getOrNull(b)?.toIntOrNull() ?: 0
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_MAX_ATTACK,
+                b,
+                fetAttackMsToRaw(
+                    state.mbc.hp.maxAttacks.split(";").getOrNull(b)?.toIntOrNull() ?: 44
+                )
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_MAX_RELEASE,
+                b,
+                fetReleaseMsToRaw(
+                    state.mbc.hp.maxReleases.split(";").getOrNull(b)?.toIntOrNull() ?: 200
+                )
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_CREST,
+                b,
+                fetReleaseMsToRaw(state.mbc.hp.crests.split(";").getOrNull(b)?.toIntOrNull() ?: 100)
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_ADAPT,
+                b,
+                state.mbc.hp.adapts.split(";").getOrNull(b)?.toIntOrNull() ?: 50
+            )
+            effect.setParameter(
+                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_NO_CLIP,
+                b,
+                if ((state.mbc.hp.noClips.split(";").getOrNull(b)?.toIntOrNull()
+                        ?: 1) != 0
+                ) 100 else 0
+            )
+        }
 
+        // DDC
+        effect.setParameter(ViperParams.PARAM_HP_DDC_ENABLE, if (state.ddc.hp.enabled) 1 else 0)
+
+        // Spectrum Extension
         effect.setParameter(
             ViperParams.PARAM_HP_SPECTRUM_EXTENSION_ENABLE,
             if (state.vse.hp.enabled) 1 else 0
         )
-        FileLogger.d("Dispatch", "VSE: ${if (state.vse.hp.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_HP_SPECTRUM_EXTENSION_BARK, state.vse.hp.strength)
         effect.setParameter(
             ViperParams.PARAM_HP_SPECTRUM_EXTENSION_BARK_RECONSTRUCT,
             vseExciterToRaw(state.vse.hp.exciter)
         )
 
+        // EQ
         effect.setParameter(ViperParams.PARAM_HP_EQ_BAND_COUNT, state.eq.hp.bandCount)
         effect.setParameter(ViperParams.PARAM_HP_EQ_ENABLE, if (state.eq.hp.enabled) 1 else 0)
-        FileLogger.d(
-            "Dispatch",
-            "EQ: ${if (state.eq.hp.enabled) "ON" else "OFF"} bands=${state.eq.hp.bandCount}"
-        )
         dispatchEqBands(effect, ViperParams.PARAM_HP_EQ_BAND_LEVEL, state.eq.hp.bands)
 
+        // Convolver
         effect.setParameter(
             ViperParams.PARAM_HP_CONVOLVER_ENABLE,
             if (state.convolver.hp.enabled) 1 else 0
         )
-        FileLogger.d("Dispatch", "Convolver: ${if (state.convolver.hp.enabled) "ON" else "OFF"}")
         effect.setParameter(
             ViperParams.PARAM_HP_CONVOLVER_CROSS_CHANNEL,
             state.convolver.hp.crossChannel
         )
 
+        // Field Surround
         effect.setParameter(
             ViperParams.PARAM_HP_FIELD_SURROUND_ENABLE,
             if (state.fieldSurround.hp.enabled) 1 else 0
-        )
-        FileLogger.d(
-            "Dispatch",
-            "FieldSurround: ${if (state.fieldSurround.hp.enabled) "ON" else "OFF"}"
         )
         effect.setParameter(
             ViperParams.PARAM_HP_FIELD_SURROUND_WIDENING,
@@ -458,13 +573,10 @@ object EffectDispatcher {
             fieldSurroundDepthToRaw(state.fieldSurround.hp.depth)
         )
 
+        // Diff Surround
         effect.setParameter(
             ViperParams.PARAM_HP_DIFF_SURROUND_ENABLE,
             if (state.diffSurround.hp.enabled) 1 else 0
-        )
-        FileLogger.d(
-            "Dispatch",
-            "DiffSurround: ${if (state.diffSurround.hp.enabled) "ON" else "OFF"}"
         )
         effect.setParameter(
             ViperParams.PARAM_HP_DIFF_SURROUND_DELAY,
@@ -483,24 +595,25 @@ object EffectDispatcher {
             state.diffSurround.hp.lpCutoff
         )
 
+        // Headphone Surround
         effect.setParameter(
             ViperParams.PARAM_HP_HEADPHONE_SURROUND_ENABLE,
             if (state.vhe.hp.enabled) 1 else 0
         )
-        FileLogger.d("Dispatch", "VHE: ${if (state.vhe.hp.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_HP_HEADPHONE_SURROUND_STRENGTH, state.vhe.hp.quality)
 
+        // Reverb
         effect.setParameter(
             ViperParams.PARAM_HP_REVERB_ENABLE,
             if (state.reverb.hp.enabled) 1 else 0
         )
-        FileLogger.d("Dispatch", "Reverb: ${if (state.reverb.hp.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_HP_REVERB_ROOM_SIZE, state.reverb.hp.roomSize * 10)
         effect.setParameter(ViperParams.PARAM_HP_REVERB_ROOM_WIDTH, state.reverb.hp.width * 10)
         effect.setParameter(ViperParams.PARAM_HP_REVERB_ROOM_DAMPENING, state.reverb.hp.dampening)
         effect.setParameter(ViperParams.PARAM_HP_REVERB_ROOM_WET_SIGNAL, state.reverb.hp.wet)
         effect.setParameter(ViperParams.PARAM_HP_REVERB_ROOM_DRY_SIGNAL, state.reverb.hp.dry)
 
+        // Dynamic System
         dispatchDynamicSystem(
             effect,
             state.dynamicSystem.hp.enabled,
@@ -513,17 +626,14 @@ object EffectDispatcher {
             ViperParams.PARAM_HP_DYNAMIC_SYSTEM_SIDE_GAIN
         )
 
+        // Tube Simulator
         effect.setParameter(
             ViperParams.PARAM_HP_TUBE_SIMULATOR_ENABLE,
             if (state.tube.hp.enabled) 1 else 0
         )
-        FileLogger.d(
-            "Dispatch",
-            "TubeSimulator: ${if (state.tube.hp.enabled) "ON" else "OFF"}"
-        )
 
+        // Bass
         effect.setParameter(ViperParams.PARAM_HP_BASS_ENABLE, if (state.bass.hp.enabled) 1 else 0)
-        FileLogger.d("Dispatch", "Bass: ${if (state.bass.hp.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_HP_BASS_MODE, state.bass.hp.mode)
         effect.setParameter(
             ViperParams.PARAM_HP_BASS_FREQUENCY,
@@ -532,11 +642,11 @@ object EffectDispatcher {
         effect.setParameter(ViperParams.PARAM_HP_BASS_GAIN, state.bass.hp.gain)
         effect.setParameter(ViperParams.PARAM_HP_BASS_ANTI_POP, if (state.bass.hp.antiPop) 1 else 0)
 
+        // Bass Mono
         effect.setParameter(
             ViperParams.PARAM_HP_BASS_MONO_ENABLE,
             if (state.bassMono.hp.enabled) 1 else 0
         )
-        FileLogger.d("Dispatch", "Bass Mono: ${if (state.bassMono.hp.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_HP_BASS_MONO_MODE, state.bassMono.hp.mode)
         effect.setParameter(
             ViperParams.PARAM_HP_BASS_MONO_FREQUENCY,
@@ -548,46 +658,43 @@ object EffectDispatcher {
             if (state.bassMono.hp.antiPop) 1 else 0
         )
 
+        // Clarity
         effect.setParameter(
             ViperParams.PARAM_HP_CLARITY_ENABLE,
             if (state.clarity.hp.enabled) 1 else 0
         )
-        FileLogger.d("Dispatch", "Clarity: ${if (state.clarity.hp.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_HP_CLARITY_MODE, state.clarity.hp.mode)
         effect.setParameter(ViperParams.PARAM_HP_CLARITY_GAIN, state.clarity.hp.gain)
 
+        // Cure
         effect.setParameter(ViperParams.PARAM_HP_CURE_ENABLE, if (state.cure.hp.enabled) 1 else 0)
-        FileLogger.d("Dispatch", "Cure: ${if (state.cure.hp.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_HP_CURE_STRENGTH, state.cure.hp.strength)
 
+        // AnalogX
         effect.setParameter(
             ViperParams.PARAM_HP_ANALOGX_ENABLE,
             if (state.analog.hp.enabled) 1 else 0
         )
-        FileLogger.d("Dispatch", "AnalogX: ${if (state.analog.hp.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_HP_ANALOGX_MODE, state.analog.hp.mode)
     }
 
     fun dispatchSpeakerState(effect: ViperEffect, state: MainUiState) {
-        FileLogger.d(
-            "Dispatch",
-            "Dispatch: speaker outputVol=${state.out.spk.volume} pan=${state.out.spk.channelPan} limiter=${state.out.spk.limiter}"
-        )
+        // Output
         effect.setParameter(ViperParams.PARAM_SPK_OUTPUT_VOLUME, state.out.spk.volume)
         effect.setParameter(ViperParams.PARAM_SPK_CHANNEL_PAN, state.out.spk.channelPan)
         effect.setParameter(ViperParams.PARAM_SPK_LIMITER, state.out.spk.limiter)
 
+        // AGC
         effect.setParameter(ViperParams.PARAM_SPK_AGC_ENABLE, if (state.agc.spk.enabled) 1 else 0)
-        FileLogger.d("Dispatch", "AGC: ${if (state.agc.spk.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_SPK_AGC_RATIO, state.agc.spk.strength)
         effect.setParameter(ViperParams.PARAM_SPK_AGC_MAX_SCALER, state.agc.spk.maxGain)
         effect.setParameter(ViperParams.PARAM_SPK_AGC_VOLUME, state.agc.spk.outputThreshold)
 
+        // FET Compressor
         effect.setParameter(
             ViperParams.PARAM_SPK_FET_COMPRESSOR_ENABLE,
             if (state.fet.spk.enabled) 100 else 0
         )
-        FileLogger.d("Dispatch", "FET: ${if (state.fet.spk.enabled) "ON" else "OFF"}")
         effect.setParameter(
             ViperParams.PARAM_SPK_FET_COMPRESSOR_THRESHOLD,
             fetThresholdToRaw(state.fet.spk.threshold)
@@ -647,56 +754,165 @@ object EffectDispatcher {
             if (state.fet.spk.noClip) 100 else 0
         )
 
+        // Multiband Compressor
         effect.setParameter(
-            ViperParams.PARAM_SPK_CONVOLVER_ENABLE,
-            if (state.convolver.spk.enabled) 1 else 0
+            ViperParams.PARAM_SPK_MULTIBAND_COMP_ENABLE,
+            if (state.mbc.spk.enabled) 1 else 0
         )
-        FileLogger.d("Dispatch", "Convolver: ${if (state.convolver.spk.enabled) "ON" else "OFF"}")
-        effect.setParameter(
-            ViperParams.PARAM_SPK_CONVOLVER_CROSS_CHANNEL,
-            state.convolver.spk.crossChannel
-        )
+        effect.setParameter(ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_COUNT, 5)
+        val spkMbcCrossoverDefaults = intArrayOf(120, 500, 4000, 8000)
+        val spkMbcCrossovers = state.mbc.spk.crossovers.split(";")
+            .mapIndexed { i, v -> v.toIntOrNull() ?: spkMbcCrossoverDefaults.getOrElse(i) { 0 } }
+        for (i in spkMbcCrossoverDefaults.indices) {
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_CROSSOVER_FREQ,
+                i,
+                spkMbcCrossovers.getOrElse(i) { spkMbcCrossoverDefaults[i] })
+        }
+        val spkMbcBandEnables =
+            state.mbc.spk.bandEnables.split(";").map { (it.toIntOrNull() ?: 1) != 0 }
+        for (b in 0 until 5) {
+            val bandEnabled = spkMbcBandEnables.getOrElse(b) { true }
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_ENABLE,
+                b,
+                if (bandEnabled) 100 else 0
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_THRESHOLD,
+                b,
+                fetThresholdToRaw(
+                    state.mbc.spk.thresholds.split(";").getOrNull(b)?.toIntOrNull() ?: -18
+                )
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_RATIO,
+                b,
+                state.mbc.spk.ratios.split(";").getOrNull(b)?.toIntOrNull() ?: 50
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_GAIN,
+                b,
+                fetGainToRaw(state.mbc.spk.gains.split(";").getOrNull(b)?.toIntOrNull() ?: 24)
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_ATTACK,
+                b,
+                fetAttackMsToRaw(state.mbc.spk.attacks.split(";").getOrNull(b)?.toIntOrNull() ?: 1)
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_RELEASE,
+                b,
+                fetReleaseMsToRaw(
+                    state.mbc.spk.releases.split(";").getOrNull(b)?.toIntOrNull() ?: 100
+                )
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_KNEE,
+                b,
+                fetKneeToRaw(state.mbc.spk.knees.split(";").getOrNull(b)?.toIntOrNull() ?: 0)
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_GAIN,
+                b,
+                if ((state.mbc.spk.autoGains.split(";").getOrNull(b)?.toIntOrNull()
+                        ?: 1) != 0
+                ) 100 else 0
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_ATTACK,
+                b,
+                if ((state.mbc.spk.autoAttacks.split(";").getOrNull(b)?.toIntOrNull()
+                        ?: 1) != 0
+                ) 100 else 0
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_RELEASE,
+                b,
+                if ((state.mbc.spk.autoReleases.split(";").getOrNull(b)?.toIntOrNull()
+                        ?: 1) != 0
+                ) 100 else 0
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_KNEE,
+                b,
+                if ((state.mbc.spk.autoKnees.split(";").getOrNull(b)?.toIntOrNull()
+                        ?: 1) != 0
+                ) 100 else 0
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_KNEE_MULTI,
+                b,
+                state.mbc.spk.kneeMultis.split(";").getOrNull(b)?.toIntOrNull() ?: 0
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_MAX_ATTACK,
+                b,
+                fetAttackMsToRaw(
+                    state.mbc.spk.maxAttacks.split(";").getOrNull(b)?.toIntOrNull() ?: 44
+                )
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_MAX_RELEASE,
+                b,
+                fetReleaseMsToRaw(
+                    state.mbc.spk.maxReleases.split(";").getOrNull(b)?.toIntOrNull() ?: 200
+                )
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_CREST,
+                b,
+                fetReleaseMsToRaw(
+                    state.mbc.spk.crests.split(";").getOrNull(b)?.toIntOrNull() ?: 100
+                )
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_ADAPT,
+                b,
+                state.mbc.spk.adapts.split(";").getOrNull(b)?.toIntOrNull() ?: 50
+            )
+            effect.setParameter(
+                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_NO_CLIP,
+                b,
+                if ((state.mbc.spk.noClips.split(";").getOrNull(b)?.toIntOrNull()
+                        ?: 1) != 0
+                ) 100 else 0
+            )
+        }
 
-        effect.setParameter(ViperParams.PARAM_SPK_EQ_BAND_COUNT, state.eq.spk.bandCount)
-        effect.setParameter(ViperParams.PARAM_SPK_EQ_ENABLE, if (state.eq.spk.enabled) 1 else 0)
-        FileLogger.d(
-            "Dispatch",
-            "EQ: ${if (state.eq.spk.enabled) "ON" else "OFF"} bands=${state.eq.spk.bandCount}"
-        )
-        dispatchEqBands(effect, ViperParams.PARAM_SPK_EQ_BAND_LEVEL, state.eq.spk.bands)
-
-        effect.setParameter(
-            ViperParams.PARAM_SPK_REVERB_ENABLE,
-            if (state.reverb.spk.enabled) 1 else 0
-        )
-        FileLogger.d("Dispatch", "Reverb: ${if (state.reverb.spk.enabled) "ON" else "OFF"}")
-        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_SIZE, state.reverb.spk.roomSize * 10)
-        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_WIDTH, state.reverb.spk.width * 10)
-        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_DAMPENING, state.reverb.spk.dampening)
-        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_WET_SIGNAL, state.reverb.spk.wet)
-        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_DRY_SIGNAL, state.reverb.spk.dry)
-
+        // DDC
         effect.setParameter(ViperParams.PARAM_SPK_DDC_ENABLE, if (state.ddc.spk.enabled) 1 else 0)
-        FileLogger.d("Dispatch", "DDC: ${if (state.ddc.spk.enabled) "ON" else "OFF"}")
 
+        // Spectrum Extension
         effect.setParameter(
             ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_ENABLE,
             if (state.vse.spk.enabled) 1 else 0
         )
-        FileLogger.d("Dispatch", "VSE: ${if (state.vse.spk.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_BARK, state.vse.spk.strength)
         effect.setParameter(
             ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_BARK_RECONSTRUCT,
             vseExciterToRaw(state.vse.spk.exciter)
         )
 
+        // EQ
+        effect.setParameter(ViperParams.PARAM_SPK_EQ_BAND_COUNT, state.eq.spk.bandCount)
+        effect.setParameter(ViperParams.PARAM_SPK_EQ_ENABLE, if (state.eq.spk.enabled) 1 else 0)
+        dispatchEqBands(effect, ViperParams.PARAM_SPK_EQ_BAND_LEVEL, state.eq.spk.bands)
+
+        // Convolver
+        effect.setParameter(
+            ViperParams.PARAM_SPK_CONVOLVER_ENABLE,
+            if (state.convolver.spk.enabled) 1 else 0
+        )
+        effect.setParameter(
+            ViperParams.PARAM_SPK_CONVOLVER_CROSS_CHANNEL,
+            state.convolver.spk.crossChannel
+        )
+
+        // Field Surround
         effect.setParameter(
             ViperParams.PARAM_SPK_FIELD_SURROUND_ENABLE,
             if (state.fieldSurround.spk.enabled) 1 else 0
-        )
-        FileLogger.d(
-            "Dispatch",
-            "FieldSurround: ${if (state.fieldSurround.spk.enabled) "ON" else "OFF"}"
         )
         effect.setParameter(
             ViperParams.PARAM_SPK_FIELD_SURROUND_WIDENING,
@@ -711,22 +927,10 @@ object EffectDispatcher {
             fieldSurroundDepthToRaw(state.fieldSurround.spk.depth)
         )
 
-        effect.setParameter(
-            ViperParams.PARAM_SPK_SPEAKER_CORRECTION_ENABLE,
-            if (state.speakerCorrection.spk.enabled) 1 else 0
-        )
-        FileLogger.d(
-            "Dispatch",
-            "SpeakerOpt: ${if (state.speakerCorrection.spk.enabled) "ON" else "OFF"}"
-        )
-
+        // Diff Surround
         effect.setParameter(
             ViperParams.PARAM_SPK_DIFF_SURROUND_ENABLE,
             if (state.diffSurround.spk.enabled) 1 else 0
-        )
-        FileLogger.d(
-            "Dispatch",
-            "DiffSurround: ${if (state.diffSurround.spk.enabled) "ON" else "OFF"}"
         )
         effect.setParameter(
             ViperParams.PARAM_SPK_DIFF_SURROUND_DELAY,
@@ -745,16 +949,28 @@ object EffectDispatcher {
             state.diffSurround.spk.lpCutoff
         )
 
+        // Headphone Surround
         effect.setParameter(
             ViperParams.PARAM_SPK_HEADPHONE_SURROUND_ENABLE,
             if (state.vhe.spk.enabled) 1 else 0
         )
-        FileLogger.d("Dispatch", "VHE: ${if (state.vhe.spk.enabled) "ON" else "OFF"}")
         effect.setParameter(
             ViperParams.PARAM_SPK_HEADPHONE_SURROUND_STRENGTH,
             state.vhe.spk.quality
         )
 
+        // Reverb
+        effect.setParameter(
+            ViperParams.PARAM_SPK_REVERB_ENABLE,
+            if (state.reverb.spk.enabled) 1 else 0
+        )
+        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_SIZE, state.reverb.spk.roomSize * 10)
+        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_WIDTH, state.reverb.spk.width * 10)
+        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_DAMPENING, state.reverb.spk.dampening)
+        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_WET_SIGNAL, state.reverb.spk.wet)
+        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_DRY_SIGNAL, state.reverb.spk.dry)
+
+        // Dynamic System
         dispatchDynamicSystem(
             effect,
             state.dynamicSystem.spk.enabled,
@@ -767,17 +983,14 @@ object EffectDispatcher {
             ViperParams.PARAM_SPK_DYNAMIC_SYSTEM_SIDE_GAIN
         )
 
+        // Tube Simulator
         effect.setParameter(
             ViperParams.PARAM_SPK_TUBE_SIMULATOR_ENABLE,
             if (state.tube.spk.enabled) 1 else 0
         )
-        FileLogger.d(
-            "Dispatch",
-            "TubeSimulator: ${if (state.tube.spk.enabled) "ON" else "OFF"}"
-        )
 
+        // Bass
         effect.setParameter(ViperParams.PARAM_SPK_BASS_ENABLE, if (state.bass.spk.enabled) 1 else 0)
-        FileLogger.d("Dispatch", "Bass: ${if (state.bass.spk.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_SPK_BASS_MODE, state.bass.spk.mode)
         effect.setParameter(
             ViperParams.PARAM_SPK_BASS_FREQUENCY,
@@ -789,11 +1002,11 @@ object EffectDispatcher {
             if (state.bass.spk.antiPop) 1 else 0
         )
 
+        // Bass Mono
         effect.setParameter(
             ViperParams.PARAM_SPK_BASS_MONO_ENABLE,
             if (state.bassMono.spk.enabled) 1 else 0
         )
-        FileLogger.d("Dispatch", "Bass Mono: ${if (state.bassMono.spk.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_SPK_BASS_MONO_MODE, state.bassMono.spk.mode)
         effect.setParameter(
             ViperParams.PARAM_SPK_BASS_MONO_FREQUENCY,
@@ -805,24 +1018,29 @@ object EffectDispatcher {
             if (state.bassMono.spk.antiPop) 1 else 0
         )
 
+        // Clarity
         effect.setParameter(
             ViperParams.PARAM_SPK_CLARITY_ENABLE,
             if (state.clarity.spk.enabled) 1 else 0
         )
-        FileLogger.d("Dispatch", "Clarity: ${if (state.clarity.spk.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_SPK_CLARITY_MODE, state.clarity.spk.mode)
         effect.setParameter(ViperParams.PARAM_SPK_CLARITY_GAIN, state.clarity.spk.gain)
 
         effect.setParameter(ViperParams.PARAM_SPK_CURE_ENABLE, if (state.cure.spk.enabled) 1 else 0)
-        FileLogger.d("Dispatch", "Cure: ${if (state.cure.spk.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_SPK_CURE_STRENGTH, state.cure.spk.strength)
 
+        // AnalogX
         effect.setParameter(
             ViperParams.PARAM_SPK_ANALOGX_ENABLE,
             if (state.analog.spk.enabled) 1 else 0
         )
-        FileLogger.d("Dispatch", "AnalogX: ${if (state.analog.spk.enabled) "ON" else "OFF"}")
         effect.setParameter(ViperParams.PARAM_SPK_ANALOGX_MODE, state.analog.spk.mode)
+
+        // Speaker Correction
+        effect.setParameter(
+            ViperParams.PARAM_SPK_SPEAKER_CORRECTION_ENABLE,
+            if (state.speakerCorrection.spk.enabled) 1 else 0
+        )
     }
 
     fun dispatchEqBands(effect: ViperEffect, param: Int, bandsString: String) {

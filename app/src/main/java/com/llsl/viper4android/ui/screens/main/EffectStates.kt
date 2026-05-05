@@ -73,6 +73,40 @@ data class FetState(
         else copy(hp = hp.transform())
 }
 
+data class MbcValues(
+    val enabled: Boolean = false,
+    val bandEnables: String = "1;1;1;1;1",
+    val crossovers: String = "120;500;4000;8000",
+    val thresholds: String = "-18;-18;-18;-18;-18",
+    val ratios: String = "50;50;50;50;50",
+    val gains: String = "24;24;24;24;24",
+    val knees: String = "0;0;0;0;0",
+    val kneeMultis: String = "0;0;0;0;0",
+    val attacks: String = "1;1;1;1;1",
+    val maxAttacks: String = "44;44;44;44;44",
+    val releases: String = "100;100;100;100;100",
+    val maxReleases: String = "200;200;200;200;200",
+    val crests: String = "100;100;100;100;100",
+    val adapts: String = "50;50;50;50;50",
+    val autoKnees: String = "1;1;1;1;1",
+    val autoGains: String = "1;1;1;1;1",
+    val autoAttacks: String = "1;1;1;1;1",
+    val autoReleases: String = "1;1;1;1;1",
+    val noClips: String = "1;1;1;1;1"
+)
+
+data class MbcState(
+    val hp: MbcValues = MbcValues(),
+    val spk: MbcValues = MbcValues()
+) {
+    fun forType(fxType: Int): MbcValues =
+        if (fxType == ViperParams.FX_TYPE_SPEAKER) spk else hp
+
+    fun updateType(fxType: Int, transform: MbcValues.() -> MbcValues): MbcState =
+        if (fxType == ViperParams.FX_TYPE_SPEAKER) copy(spk = spk.transform())
+        else copy(hp = hp.transform())
+}
+
 data class DdcValues(
     val enabled: Boolean = false,
     val device: String = ""
