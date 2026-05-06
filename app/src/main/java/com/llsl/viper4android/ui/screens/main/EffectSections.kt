@@ -15,7 +15,9 @@ import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.BlurCircular
 import androidx.compose.material.icons.filled.BlurOn
+import androidx.compose.material.icons.filled.CandlestickChart
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.CrisisAlert
 import androidx.compose.material.icons.filled.Delete
@@ -29,10 +31,10 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.SettingsInputComponent
 import androidx.compose.material.icons.filled.SpatialAudio
-import androidx.compose.material.icons.filled.Speaker
+import androidx.compose.material.icons.filled.SpeakerPhone
 import androidx.compose.material.icons.filled.SurroundSound
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VerticalAlignCenter
 import androidx.compose.material.icons.filled.Waves
 import androidx.compose.material3.AlertDialog
@@ -628,7 +630,7 @@ fun DdcSection(state: MainUiState, viewModel: MainViewModel, isSpkMode: Boolean 
         title = stringResource(R.string.section_ddc),
         enabled = enabled,
         onEnabledChange = onEnabledChange,
-        icon = Icons.Default.Tune
+        icon = Icons.Default.SettingsInputComponent
     ) {
         LabeledDropdown(
             label = stringResource(R.string.label_ddc_device),
@@ -948,7 +950,7 @@ fun ConvolverSection(state: MainUiState, viewModel: MainViewModel, isSpkMode: Bo
         title = stringResource(R.string.section_convolver),
         enabled = enabled,
         onEnabledChange = onEnabledChange,
-        icon = Icons.Default.GraphicEq
+        icon = Icons.Default.BlurCircular
     ) {
         LabeledDropdown(
             label = stringResource(R.string.label_convolver_kernel),
@@ -1257,7 +1259,7 @@ fun DynamicSystemSection(state: MainUiState, viewModel: MainViewModel, isSpkMode
         title = stringResource(R.string.section_dynamic_system),
         enabled = enabled,
         onEnabledChange = onEnabledChange,
-        icon = Icons.Default.Speaker
+        icon = Icons.Default.CandlestickChart
     ) {
         val presetName =
             dsPresets.find { it.id == dsPresetId }?.name ?: stringResource(R.string.label_custom)
@@ -1710,7 +1712,7 @@ fun SpeakerOptSection(state: MainUiState, viewModel: MainViewModel) {
         title = stringResource(R.string.section_speaker_optimization),
         enabled = state.speakerCorrection.spk.enabled,
         onEnabledChange = viewModel::setSpeakerOptEnabled,
-        icon = Icons.Default.Speaker,
+        icon = Icons.Default.SpeakerPhone,
         toggleOnly = true
     ) {}
 }
