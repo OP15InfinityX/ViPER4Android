@@ -4209,6 +4209,10 @@ class MainViewModel
             applyFullState()
         }
 
+        fun saveSettingsOnBackground() {
+            viewModelScope.launch { saveCurrentDeviceSettings() }
+        }
+
         fun renameDevice(
             deviceId: String,
             name: String,
