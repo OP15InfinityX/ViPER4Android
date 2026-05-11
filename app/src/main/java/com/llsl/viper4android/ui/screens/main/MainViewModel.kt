@@ -4867,7 +4867,7 @@ class MainViewModel
                 queryDriverStatusFromFile()
                 return
             }
-            val effect = viperService?.getGlobalEffect()
+            val effect = viperService?.getActiveEffect()
             if (effect != null && effect.isCreated) {
                 queryDriverStatusFrom(effect)
                 return
