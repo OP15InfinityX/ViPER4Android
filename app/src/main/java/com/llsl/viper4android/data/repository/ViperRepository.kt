@@ -96,14 +96,16 @@ class ViperRepository
 
         // noinspection PrivateApi
         // noinspection DiscouragedPrivateApi
-        val aidlMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-            val services = Class.forName("android.os.ServiceManager")
-                .getDeclaredMethod("listServices")
-                .invoke(null) as? Array<*>
-
-            "android.hardware.audio.effect.IFactory/default" in services.orEmpty()
-        } else {
-            false
+        val aidlMode: Boolean by lazy {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return@lazy false
+            runCatching {
+                val services =
+                    Class
+                        .forName("android.os.ServiceManager")
+                        .getDeclaredMethod("listServices")
+                        .invoke(null) as? Array<*>
+                "android.hardware.audio.effect.IFactory/default" in services.orEmpty()
+            }.getOrDefault(false)
         }
 
         suspend fun setBooleanPreference(

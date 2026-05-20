@@ -130,6 +130,7 @@ class MainViewModel
         val autoStartEnabled: StateFlow<Boolean> = _autoStartEnabled.asStateFlow()
 
         private val _aidlModeEnabled = MutableStateFlow(false)
+        val aidlModeEnabled: StateFlow<Boolean> = _aidlModeEnabled.asStateFlow()
 
         private val _globalModeEnabled = MutableStateFlow(false)
         val globalModeEnabled: StateFlow<Boolean> = _globalModeEnabled.asStateFlow()
