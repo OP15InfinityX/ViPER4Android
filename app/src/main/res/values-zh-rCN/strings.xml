@@ -247,6 +247,8 @@
     <string name="device_no_devices">无已保存设备</string>
     <string name="device_rename_title">重命名设备</string>
     <string name="device_rename_hint">设备名称</string>
+    <string name="device_update_title">Update Device Preset</string>
+    <string name="device_update_confirm">Overwrite "%1$s" preset with current settings? This cannot be undone.</string>
 
     <!-- Actions -->
     <string name="action_save">保存</string>

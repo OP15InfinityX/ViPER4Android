@@ -152,7 +152,7 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
             activeDeviceId = state.activeDeviceId,
             onRename = viewModel::renameDevice,
             onLoad = viewModel::loadDevicePreset,
-            onSave = viewModel::saveDevicePreset,
+            onUpdate = viewModel::saveDevicePreset,
             onDelete = viewModel::deleteDeviceSettings,
             onDismiss = { showDeviceDialog = false },
         )

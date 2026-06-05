@@ -248,6 +248,8 @@
     <string name="device_no_devices">No saved devices</string>
     <string name="device_rename_title">Rename Device</string>
     <string name="device_rename_hint">Device name</string>
+    <string name="device_update_title">Update Device Preset</string>
+    <string name="device_update_confirm">Overwrite "%1$s" preset with current settings? This cannot be undone.</string>
 
     <!-- Actions -->
     <string name="action_save">Save</string>

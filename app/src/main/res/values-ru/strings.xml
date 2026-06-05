@@ -247,6 +247,8 @@
     <string name="device_no_devices">Нет сохранённых устройств</string>
     <string name="device_rename_title">Переименовать устройство</string>
     <string name="device_rename_hint">Имя устройства</string>
+    <string name="device_update_title">Update Device Preset</string>
+    <string name="device_update_confirm">Overwrite "%1$s" preset with current settings? This cannot be undone.</string>
 
     <!-- Actions -->
     <string name="action_save">Сохранить</string>
