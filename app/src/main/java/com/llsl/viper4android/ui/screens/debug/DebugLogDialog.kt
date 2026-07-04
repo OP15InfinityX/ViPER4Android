@@ -179,6 +179,10 @@ fun DebugLogDialog(
         }
 
         withContext(Dispatchers.IO) {
+            if (!RootShell.isRootAvailable()) {
+                allLines.add(DRIVER_PREFIX + "logcat unavailable (root required)")
+                return@withContext
+            }
             var proc: Process? = null
             try {
                 val tsArg =
