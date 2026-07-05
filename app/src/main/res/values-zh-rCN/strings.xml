@@ -208,6 +208,17 @@
     <string name="preset_cleared">已清除</string>
     <string name="preset_update_title">更新预设</string>
     <string name="preset_update_confirm">确定用当前设置覆盖 "%1$s"? 此操作无法撤销</string>
+    <!-- V2_EXPORT_REMOVE_BEFORE_MERGE BEGIN -->
+    <string name="export_preset_action">Export preset</string>
+    <string name="export_as_v1">Export as v1 (.v1.json)</string>
+    <string name="export_as_v1_description">Current single-mode format. Use for app-to-app transfer on this version.</string>
+    <string name="export_as_v2">Export as v2 (.v2.json)</string>
+    <string name="export_as_v2_description">Unified cross-platform format. Use to migrate to ViPER4Android v2.</string>
+    <string name="export_all_action">Export All</string>
+    <string name="export_all_title">Export All Presets</string>
+    <string name="export_all_progress">Exporting presets</string>
+    <string name="export_all_done">Exported</string>
+    <!-- V2_EXPORT_REMOVE_BEFORE_MERGE END -->
 
     <!-- Driver Status -->
     <string name="driver_not_found">未找到驱动</string>

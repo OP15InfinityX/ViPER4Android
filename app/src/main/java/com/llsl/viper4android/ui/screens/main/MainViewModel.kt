@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.net.Uri
 import android.os.IBinder
+import android.provider.DocumentsContract
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -25,6 +26,7 @@ import com.llsl.viper4android.data.model.DsPreset
 import com.llsl.viper4android.data.model.EqPreset
 import com.llsl.viper4android.data.model.Preset
 import com.llsl.viper4android.data.repository.ViperRepository
+import com.llsl.viper4android.migrate.V2Export
 import com.llsl.viper4android.service.ViperService
 import com.llsl.viper4android.utils.FileLogger
 import com.llsl.viper4android.utils.RootShell
@@ -109,6 +111,7 @@ class MainViewModel
             private const val NOTIFY_ID_VDC_IMPORT = 5
             private const val PROGRESS_NOTIFY_MIN_GAP_MS = 200L
             private const val PROGRESS_DRAIN_DELAY_MS = 250L
+            private const val NOTIFY_ID_PRESET_EXPORT_ALL = 6 // V2_EXPORT_REMOVE_BEFORE_MERGE
         }
 
         private val _uiState = MutableStateFlow(MainUiState())
@@ -4998,6 +5001,126 @@ class MainViewModel
                 }
             }
         }
+
+        // V2_EXPORT_REMOVE_BEFORE_MERGE BEGIN
+        fun exportPresetAsV1ToUri(
+            presetId: Long,
+            uri: Uri,
+        ) {
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val preset = repository.getPresetById(presetId) ?: return@launch
+                    writeJsonToUri(uri, preset.settingsJson)
+                } catch (e: Exception) {
+                    FileLogger.e("ViewModel", "exportPresetAsV1ToUri: id=$presetId failed", e)
+                }
+            }
+        }
+
+        fun exportPresetAsV2ToUri(
+            presetId: Long,
+            uri: Uri,
+        ) {
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val preset = repository.getPresetById(presetId) ?: return@launch
+                    val v1 = JSONObject(preset.settingsJson)
+                    val isSpk = preset.fxType == ViperParams.FX_TYPE_SPEAKER
+                    val v2 =
+                        V2Export.serializeEffectPrefsV2(
+                            v1,
+                            isSpk = isSpk,
+                            name = preset.name,
+                            createdAt = preset.createdAt,
+                        )
+                    writeJsonToUri(uri, v2.toString(2))
+                } catch (e: Exception) {
+                    FileLogger.e("ViewModel", "exportPresetAsV2ToUri: id=$presetId failed", e)
+                }
+            }
+        }
+
+        fun exportAllPresetsToFolder(
+            treeUri: Uri,
+            asV2: Boolean,
+            notificationTitle: String,
+            successStr: String,
+            onResult: (Int, Int) -> Unit,
+        ) {
+            viewModelScope.launch(Dispatchers.IO) {
+                val app = getApplication<Application>()
+                val resolver = app.contentResolver
+                val docId = DocumentsContract.getTreeDocumentId(treeUri)
+                val parentDocUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, docId)
+                val all = repository.getAllPresets().first()
+                val total = all.size
+                val showProgress = total > 10
+                var exported = 0
+                all.forEachIndexed { index, preset ->
+                    try {
+                        val payload =
+                            if (asV2) {
+                                val v1 = JSONObject(preset.settingsJson)
+                                val isSpk = preset.fxType == ViperParams.FX_TYPE_SPEAKER
+                                V2Export
+                                    .serializeEffectPrefsV2(
+                                        v1,
+                                        isSpk = isSpk,
+                                        name = preset.name,
+                                        createdAt = preset.createdAt,
+                                    ).toString(2)
+                            } else {
+                                preset.settingsJson
+                            }
+                        val displayName = "${preset.name}.${if (asV2) "v2" else "v1"}.json"
+                        val newUri =
+                            DocumentsContract.createDocument(
+                                resolver,
+                                parentDocUri,
+                                "application/json",
+                                displayName,
+                            )
+                        if (newUri != null) {
+                            writeJsonToUri(newUri, payload)
+                            exported++
+                        } else {
+                            FileLogger.w(
+                                "ViewModel",
+                                "exportAllPresetsToFolder: createDocument null for $displayName",
+                            )
+                        }
+                    } catch (e: Exception) {
+                        FileLogger.e(
+                            "ViewModel",
+                            "exportAllPresetsToFolder: id=${preset.id} failed",
+                            e,
+                        )
+                    }
+                    if (showProgress && ((index + 1) % 5 == 0 || index + 1 == total)) {
+                        updateBulkProgress(NOTIFY_ID_PRESET_EXPORT_ALL, notificationTitle, index + 1, total)
+                    }
+                }
+                if (showProgress) {
+                    completeBulkProgress(NOTIFY_ID_PRESET_EXPORT_ALL, notificationTitle, "$successStr: $exported / $total")
+                }
+                FileLogger.i(
+                    "ViewModel",
+                    "exportAllPresetsToFolder: asV2=$asV2 exported=$exported/$total",
+                )
+                launch(Dispatchers.Main) { onResult(exported, total) }
+            }
+        }
+
+        private fun writeJsonToUri(
+            uri: Uri,
+            json: String,
+        ) {
+            getApplication<Application>().contentResolver.openOutputStream(uri, "wt")?.use { os ->
+                os.write(json.toByteArray(Charsets.UTF_8))
+                os.flush()
+            }
+        }
+        // V2_EXPORT_REMOVE_BEFORE_MERGE END
 
         fun queryDriverStatus() {
             if (_aidlModeEnabled.value) {

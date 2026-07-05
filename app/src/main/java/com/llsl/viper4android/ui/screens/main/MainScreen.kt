@@ -98,6 +98,11 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
 
     val clearAllProgressStr = stringResource(R.string.preset_clear_all_progress)
     val clearedStr = stringResource(R.string.preset_cleared)
+    // V2_EXPORT_REMOVE_BEFORE_MERGE BEGIN
+    val exportAllProgressStr = stringResource(R.string.export_all_progress)
+    val exportAllDoneStr = stringResource(R.string.export_all_done)
+    // V2_EXPORT_REMOVE_BEFORE_MERGE END
+
     if (showPresetDialog) {
         PresetDialog(
             presets = presets,
@@ -118,6 +123,25 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
                 }
             },
             onDismiss = { showPresetDialog = false },
+            // V2_EXPORT_REMOVE_BEFORE_MERGE BEGIN
+            onExportV1 = viewModel::exportPresetAsV1ToUri,
+            onExportV2 = viewModel::exportPresetAsV2ToUri,
+            onExportAll = { treeUri, asV2 ->
+                viewModel.exportAllPresetsToFolder(
+                    treeUri = treeUri,
+                    asV2 = asV2,
+                    notificationTitle = exportAllProgressStr,
+                    successStr = exportAllDoneStr,
+                ) { exported, total ->
+                    Toast
+                        .makeText(
+                            context,
+                            "$exportAllDoneStr: $exported / $total",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                }
+            },
+            // V2_EXPORT_REMOVE_BEFORE_MERGE END
         )
     }
 
