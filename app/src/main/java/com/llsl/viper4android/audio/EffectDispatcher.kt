@@ -2,34 +2,35 @@ package com.llsl.viper4android.audio
 
 import com.llsl.viper4android.R
 import com.llsl.viper4android.data.repository.ViperRepository
+import com.llsl.viper4android.ui.screens.main.DynamicSystemState
 import com.llsl.viper4android.ui.screens.main.MainUiState
 import com.llsl.viper4android.ui.screens.main.loadEffectPrefs
 import com.llsl.viper4android.utils.FileLogger
-import kotlinx.coroutines.flow.first
-import java.util.Locale
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.math.ln
 import kotlin.math.roundToInt
 
 object EffectDispatcher {
-    fun fetThresholdToRaw(dB: Int): Int = (dB / -60.0 * 100.0).roundToInt()
+    fun fetCompressorThresholdToRaw(dB: Int): Int = (dB / -60.0 * 100.0).roundToInt()
 
-    fun fetKneeToRaw(dB: Int): Int = (dB / 60.0 * 100.0).roundToInt()
+    fun fetCompressorKneeToRaw(dB: Int): Int = (dB / 60.0 * 100.0).roundToInt()
 
-    fun fetGainToRaw(dB: Int): Int = (dB / 60.0 * 100.0).roundToInt()
+    fun fetCompressorGainToRaw(dB: Int): Int = (dB / 60.0 * 100.0).roundToInt()
 
-    fun fetAttackMsToRaw(ms: Int): Int {
+    fun fetCompressorAttackMsToRaw(ms: Int): Int {
         val timeSec = ms / 1000.0
         val value = (ln(timeSec) + 9.21034) / 7.600903
         return (value * 100.0).roundToInt().coerceIn(0, 200)
     }
 
-    fun fetReleaseMsToRaw(ms: Int): Int {
+    fun fetCompressorReleaseMsToRaw(ms: Int): Int {
         val timeSec = ms / 1000.0
         val value = (ln(timeSec) + 5.298317) / 5.991465
         return (value * 100.0).roundToInt().coerceIn(0, 200)
     }
 
-    fun vseExciterToRaw(value: Int): Int = (value * 5.6).toInt()
+    fun spectrumExtensionExciterToRaw(value: Int): Int = (value * 5.6).toInt()
 
     fun fieldSurroundMidImageToRaw(value: Int): Int = value * 10 + 100
 
@@ -264,7 +265,18 @@ object EffectDispatcher {
         BUILTIN_DS_PRESETS.associate { it.key to it.nameRes }
 
     val EQ_BAND_LABELS_10 =
-        listOf("31Hz", "62Hz", "125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz", "16kHz")
+        listOf(
+            "31Hz",
+            "62Hz",
+            "125Hz",
+            "250Hz",
+            "500Hz",
+            "1kHz",
+            "2kHz",
+            "4kHz",
+            "8kHz",
+            "16kHz",
+        )
     val EQ_BAND_LABELS_15 =
         listOf(
             "25Hz",
@@ -355,20 +367,28 @@ object EffectDispatcher {
         }
 
     private fun ensureBandCount(
-        rawBands: String,
+        rawBands: List<Double>,
         expectedCount: Int,
-    ): String {
-        val actualCount = rawBands.split(";").count { it.isNotBlank() }
-        return if (actualCount != expectedCount) {
-            List(expectedCount) { 0f }.joinToString(";") {
-                String.format(Locale.US, "%.1f", it)
-            } + ";"
+    ): List<Double> =
+        if (rawBands.size != expectedCount) {
+            List(expectedCount) { 0.0 }
         } else {
             rawBands
         }
-    }
 
-    val EQ_GRAPH_LABELS_10 = listOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
+    val EQ_GRAPH_LABELS_10 =
+        listOf(
+            "31",
+            "62",
+            "125",
+            "250",
+            "500",
+            "1k",
+            "2k",
+            "4k",
+            "8k",
+            "16k",
+        )
     val EQ_GRAPH_LABELS_15 =
         listOf(
             "25",
@@ -463,1207 +483,302 @@ object EffectDispatcher {
         state: MainUiState,
         masterEnabled: Boolean,
     ) {
-        val mode = if (state.fxType == ViperParams.FX_TYPE_HEADPHONE) "Headphone" else "Speaker"
         FileLogger.d(
             "Dispatch",
-            "Dispatch: fullState mode=$mode master=${if (masterEnabled) "ON" else "OFF"}",
+            "Dispatch: fullState master=${if (masterEnabled) "ON" else "OFF"}",
         )
-        if (state.fxType == ViperParams.FX_TYPE_HEADPHONE) {
-            dispatchHeadphoneState(effect, state)
-        } else {
-            dispatchSpeakerState(effect, state)
-        }
+        dispatchState(effect, state)
     }
 
-    fun dispatchHeadphoneState(
+    fun dispatchState(
         effect: ViperEffect,
         state: MainUiState,
     ) {
         // Output
-        effect.setParameter(ViperParams.PARAM_HP_OUTPUT_VOLUME, state.out.hp.volume)
-        effect.setParameter(ViperParams.PARAM_HP_CHANNEL_PAN, state.out.hp.channelPan)
-        effect.setParameter(ViperParams.PARAM_HP_LIMITER, state.out.hp.limiter)
+        effect.setParameter(ViperParams.kParamMasterLimiterOutputVolume, state.out.volume)
+        effect.setParameter(ViperParams.kParamMasterLimiterChannelPan, state.out.channelPan)
+        effect.setParameter(ViperParams.kParamMasterLimiterThreshold, state.out.limiter)
 
         // AGC
-        effect.setParameter(ViperParams.PARAM_HP_AGC_ENABLE, if (state.agc.hp.enabled) 1 else 0)
-        effect.setParameter(ViperParams.PARAM_HP_AGC_RATIO, state.agc.hp.strength)
-        effect.setParameter(ViperParams.PARAM_HP_AGC_MAX_SCALER, state.agc.hp.maxGain)
-        effect.setParameter(ViperParams.PARAM_HP_AGC_VOLUME, state.agc.hp.outputThreshold)
+        effect.setParameter(ViperParams.kParamPlaybackGainControlEnable, if (state.playbackGainControl.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamPlaybackGainControlStrength, state.playbackGainControl.strength)
+        effect.setParameter(ViperParams.kParamPlaybackGainControlMaxGain, state.playbackGainControl.maxGain)
+        effect.setParameter(ViperParams.kParamPlaybackGainControlOutputThreshold, state.playbackGainControl.outputThreshold)
 
         // LUFS
-        effect.setParameter(ViperParams.PARAM_HP_LUFS_ENABLE, if (state.lufs.hp.enabled) 1 else 0)
-        effect.setParameter(ViperParams.PARAM_HP_LUFS_TARGET, state.lufs.hp.target)
-        effect.setParameter(ViperParams.PARAM_HP_LUFS_MAX_GAIN, state.lufs.hp.maxGain)
-        effect.setParameter(ViperParams.PARAM_HP_LUFS_SPEED, state.lufs.hp.speed)
+        effect.setParameter(ViperParams.kParamLufsEnable, if (state.lufs.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamLufsTarget, state.lufs.target)
+        effect.setParameter(ViperParams.kParamLufsMaxGain, state.lufs.maxGain)
+        effect.setParameter(ViperParams.kParamLufsSpeed, state.lufs.speed)
 
         // FET Compressor
-        effect.setParameter(
-            ViperParams.PARAM_HP_FET_COMPRESSOR_ENABLE,
-            if (state.fet.hp.enabled) 100 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_FET_COMPRESSOR_THRESHOLD,
-            fetThresholdToRaw(state.fet.hp.threshold),
-        )
-        effect.setParameter(ViperParams.PARAM_HP_FET_COMPRESSOR_RATIO, state.fet.hp.ratio)
-        effect.setParameter(
-            ViperParams.PARAM_HP_FET_COMPRESSOR_AUTO_KNEE,
-            if (state.fet.hp.autoKnee) 100 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_FET_COMPRESSOR_KNEE,
-            fetKneeToRaw(state.fet.hp.knee),
-        )
-        effect.setParameter(ViperParams.PARAM_HP_FET_COMPRESSOR_KNEE_MULTI, state.fet.hp.kneeMulti)
-        effect.setParameter(
-            ViperParams.PARAM_HP_FET_COMPRESSOR_AUTO_GAIN,
-            if (state.fet.hp.autoGain) 100 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_FET_COMPRESSOR_GAIN,
-            fetGainToRaw(state.fet.hp.gain),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_FET_COMPRESSOR_AUTO_ATTACK,
-            if (state.fet.hp.autoAttack) 100 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_FET_COMPRESSOR_ATTACK,
-            fetAttackMsToRaw(state.fet.hp.attack),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_FET_COMPRESSOR_MAX_ATTACK,
-            fetAttackMsToRaw(state.fet.hp.maxAttack),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_FET_COMPRESSOR_AUTO_RELEASE,
-            if (state.fet.hp.autoRelease) 100 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_FET_COMPRESSOR_RELEASE,
-            fetReleaseMsToRaw(state.fet.hp.release),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_FET_COMPRESSOR_MAX_RELEASE,
-            fetReleaseMsToRaw(state.fet.hp.maxRelease),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_FET_COMPRESSOR_CREST,
-            fetReleaseMsToRaw(state.fet.hp.crest),
-        )
-        effect.setParameter(ViperParams.PARAM_HP_FET_COMPRESSOR_ADAPT, state.fet.hp.adapt)
-        effect.setParameter(
-            ViperParams.PARAM_HP_FET_COMPRESSOR_NO_CLIP,
-            if (state.fet.hp.noClip) 100 else 0,
-        )
+        effect.setParameter(ViperParams.kParamFetCompressorEnable, if (state.fetCompressor.enable) 100 else 0)
+        effect.setParameter(ViperParams.kParamFetCompressorThreshold, fetCompressorThresholdToRaw(state.fetCompressor.threshold))
+        effect.setParameter(ViperParams.kParamFetCompressorRatio, state.fetCompressor.ratio)
+        effect.setParameter(ViperParams.kParamFetCompressorKneeAuto, if (state.fetCompressor.kneeAuto) 100 else 0)
+        effect.setParameter(ViperParams.kParamFetCompressorKnee, fetCompressorKneeToRaw(state.fetCompressor.knee))
+        effect.setParameter(ViperParams.kParamFetCompressorKneeMulti, state.fetCompressor.kneeMulti)
+        effect.setParameter(ViperParams.kParamFetCompressorGainAuto, if (state.fetCompressor.gainAuto) 100 else 0)
+        effect.setParameter(ViperParams.kParamFetCompressorGain, fetCompressorGainToRaw(state.fetCompressor.gain))
+        effect.setParameter(ViperParams.kParamFetCompressorAttackAuto, if (state.fetCompressor.attackAuto) 100 else 0)
+        effect.setParameter(ViperParams.kParamFetCompressorAttack, fetCompressorAttackMsToRaw(state.fetCompressor.attack))
+        effect.setParameter(ViperParams.kParamFetCompressorMaxAttack, fetCompressorAttackMsToRaw(state.fetCompressor.maxAttack))
+        effect.setParameter(ViperParams.kParamFetCompressorReleaseAuto, if (state.fetCompressor.releaseAuto) 100 else 0)
+        effect.setParameter(ViperParams.kParamFetCompressorRelease, fetCompressorReleaseMsToRaw(state.fetCompressor.release))
+        effect.setParameter(ViperParams.kParamFetCompressorMaxRelease, fetCompressorReleaseMsToRaw(state.fetCompressor.maxRelease))
+        effect.setParameter(ViperParams.kParamFetCompressorCrest, fetCompressorReleaseMsToRaw(state.fetCompressor.crest))
+        effect.setParameter(ViperParams.kParamFetCompressorAdapt, state.fetCompressor.adapt)
+        effect.setParameter(ViperParams.kParamFetCompressorNoClip, if (state.fetCompressor.noClip) 100 else 0)
 
         // Multiband Compressor
-        effect.setParameter(
-            ViperParams.PARAM_HP_MULTIBAND_COMP_ENABLE,
-            if (state.mbc.hp.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_COUNT, 5)
-        val hpMbcCrossoverDefaults = intArrayOf(120, 500, 4000, 8000)
-        val hpMbcCrossovers =
-            state.mbc.hp.crossovers
-                .split(";")
-                .mapIndexed { i, v -> v.toIntOrNull() ?: hpMbcCrossoverDefaults.getOrElse(i) { 0 } }
-        for (i in hpMbcCrossoverDefaults.indices) {
+        effect.setParameter(ViperParams.kParamMultibandCompressorEnable, if (state.multibandCompressor.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamMultibandCompressorBandCount, 5)
+        val mbc = state.multibandCompressor
+        val mbcCrossoverDefaults = intArrayOf(120, 500, 4000, 8000)
+        for (i in mbcCrossoverDefaults.indices) {
             effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_CROSSOVER_FREQ,
+                ViperParams.kParamMultibandCompressorCrossoverFrequency,
                 i,
-                hpMbcCrossovers.getOrElse(i) { hpMbcCrossoverDefaults[i] },
+                mbc.crossovers.getOrElse(i) { mbcCrossoverDefaults[i] },
             )
         }
-        val hpMbcBandEnables =
-            state.mbc.hp.bandEnables
-                .split(";")
-                .map { (it.toIntOrNull() ?: 1) != 0 }
         for (b in 0 until 5) {
-            val bandEnabled = hpMbcBandEnables.getOrElse(b) { true }
+            val bandEnabled = mbc.bandEnables.getOrElse(b) { true }
+            effect.setParameter(ViperParams.kParamMultibandCompressorBandEnable, b, if (bandEnabled) 100 else 0)
             effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_ENABLE,
+                ViperParams.kParamMultibandCompressorBandThreshold,
                 b,
-                if (bandEnabled) 100 else 0,
+                fetCompressorThresholdToRaw(mbc.thresholds.getOrElse(b) { -18 }),
+            )
+            effect.setParameter(ViperParams.kParamMultibandCompressorBandRatio, b, mbc.ratios.getOrElse(b) { 50 })
+            effect.setParameter(ViperParams.kParamMultibandCompressorBandGain, b, fetCompressorGainToRaw(mbc.gains.getOrElse(b) { 0 }))
+            effect.setParameter(
+                ViperParams.kParamMultibandCompressorBandAttack,
+                b,
+                fetCompressorAttackMsToRaw(mbc.attacks.getOrElse(b) { 1 }),
             )
             effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_THRESHOLD,
+                ViperParams.kParamMultibandCompressorBandRelease,
                 b,
-                fetThresholdToRaw(
-                    state.mbc.hp.thresholds
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: -18,
-                ),
+                fetCompressorReleaseMsToRaw(mbc.releases.getOrElse(b) { 100 }),
+            )
+            effect.setParameter(ViperParams.kParamMultibandCompressorBandKnee, b, fetCompressorKneeToRaw(mbc.knees.getOrElse(b) { 0 }))
+            effect.setParameter(ViperParams.kParamMultibandCompressorBandGainAuto, b, if (mbc.gainAutos.getOrElse(b) { true }) 100 else 0)
+            effect.setParameter(
+                ViperParams.kParamMultibandCompressorBandAttackAuto,
+                b,
+                if (mbc.attackAutos.getOrElse(b) { true }) 100 else 0,
             )
             effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_RATIO,
+                ViperParams.kParamMultibandCompressorBandReleaseAuto,
                 b,
-                state.mbc.hp.ratios
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 50,
+                if (mbc.releaseAutos.getOrElse(b) { true }) 100 else 0,
             )
+            effect.setParameter(ViperParams.kParamMultibandCompressorBandKneeAuto, b, if (mbc.kneeAutos.getOrElse(b) { true }) 100 else 0)
+            effect.setParameter(ViperParams.kParamMultibandCompressorBandKneeMulti, b, mbc.kneeMultis.getOrElse(b) { 0 })
             effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_GAIN,
+                ViperParams.kParamMultibandCompressorBandMaxAttack,
                 b,
-                fetGainToRaw(
-                    state.mbc.hp.gains
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: 24,
-                ),
+                fetCompressorAttackMsToRaw(mbc.maxAttacks.getOrElse(b) { 44 }),
             )
+            effect
+                .setParameter(
+                    ViperParams.kParamMultibandCompressorBandMaxRelease,
+                    b,
+                    fetCompressorReleaseMsToRaw(mbc.maxReleases.getOrElse(b) { 200 }),
+                )
             effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_ATTACK,
+                ViperParams.kParamMultibandCompressorBandCrest,
                 b,
-                fetAttackMsToRaw(
-                    state.mbc.hp.attacks
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: 1,
-                ),
+                fetCompressorReleaseMsToRaw(mbc.crests.getOrElse(b) { 100 }),
             )
-            effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_RELEASE,
-                b,
-                fetReleaseMsToRaw(
-                    state.mbc.hp.releases
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: 100,
-                ),
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_KNEE,
-                b,
-                fetKneeToRaw(
-                    state.mbc.hp.knees
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: 0,
-                ),
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_GAIN,
-                b,
-                if ((
-                        state.mbc.hp.autoGains
-                            .split(";")
-                            .getOrNull(b)
-                            ?.toIntOrNull()
-                            ?: 1
-                    ) != 0
-                ) {
-                    100
-                } else {
-                    0
-                },
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_ATTACK,
-                b,
-                if ((
-                        state.mbc.hp.autoAttacks
-                            .split(";")
-                            .getOrNull(b)
-                            ?.toIntOrNull()
-                            ?: 1
-                    ) != 0
-                ) {
-                    100
-                } else {
-                    0
-                },
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_RELEASE,
-                b,
-                if ((
-                        state.mbc.hp.autoReleases
-                            .split(";")
-                            .getOrNull(b)
-                            ?.toIntOrNull()
-                            ?: 1
-                    ) != 0
-                ) {
-                    100
-                } else {
-                    0
-                },
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_AUTO_KNEE,
-                b,
-                if ((
-                        state.mbc.hp.autoKnees
-                            .split(";")
-                            .getOrNull(b)
-                            ?.toIntOrNull()
-                            ?: 1
-                    ) != 0
-                ) {
-                    100
-                } else {
-                    0
-                },
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_KNEE_MULTI,
-                b,
-                state.mbc.hp.kneeMultis
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 0,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_MAX_ATTACK,
-                b,
-                fetAttackMsToRaw(
-                    state.mbc.hp.maxAttacks
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: 44,
-                ),
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_MAX_RELEASE,
-                b,
-                fetReleaseMsToRaw(
-                    state.mbc.hp.maxReleases
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: 200,
-                ),
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_CREST,
-                b,
-                fetReleaseMsToRaw(
-                    state.mbc.hp.crests
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: 100,
-                ),
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_ADAPT,
-                b,
-                state.mbc.hp.adapts
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 50,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_MULTIBAND_COMP_BAND_NO_CLIP,
-                b,
-                if ((
-                        state.mbc.hp.noClips
-                            .split(";")
-                            .getOrNull(b)
-                            ?.toIntOrNull()
-                            ?: 1
-                    ) != 0
-                ) {
-                    100
-                } else {
-                    0
-                },
-            )
+            effect.setParameter(ViperParams.kParamMultibandCompressorBandAdapt, b, mbc.adapts.getOrElse(b) { 50 })
+            effect.setParameter(ViperParams.kParamMultibandCompressorBandNoClip, b, if (mbc.noClips.getOrElse(b) { true }) 100 else 0)
         }
 
         // DDC
-        effect.setParameter(ViperParams.PARAM_HP_DDC_ENABLE, if (state.ddc.hp.enabled) 1 else 0)
+        effect.setParameter(ViperParams.kParamDdcEnable, if (state.ddc.enable) 1 else 0)
 
         // Spectrum Extension
-        effect.setParameter(
-            ViperParams.PARAM_HP_SPECTRUM_EXTENSION_ENABLE,
-            if (state.vse.hp.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_HP_SPECTRUM_EXTENSION_BARK, state.vse.hp.strength)
-        effect.setParameter(
-            ViperParams.PARAM_HP_SPECTRUM_EXTENSION_BARK_RECONSTRUCT,
-            vseExciterToRaw(state.vse.hp.exciter),
-        )
+        effect.setParameter(ViperParams.kParamSpectrumExtensionEnable, if (state.spectrumExtension.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamSpectrumExtensionStrength, state.spectrumExtension.strength)
+        effect.setParameter(ViperParams.kParamSpectrumExtensionExciter, spectrumExtensionExciterToRaw(state.spectrumExtension.exciter))
 
         // EQ
-        effect.setParameter(ViperParams.PARAM_HP_EQ_BAND_COUNT, state.eq.hp.bandCount)
-        effect.setParameter(ViperParams.PARAM_HP_EQ_ENABLE, if (state.eq.hp.enabled) 1 else 0)
-        dispatchEqBands(effect, ViperParams.PARAM_HP_EQ_BAND_LEVEL, state.eq.hp.bands)
+        effect.setParameter(ViperParams.kParamEqualizerBandCount, state.eq.bandCount)
+        effect.setParameter(ViperParams.kParamEqualizerEnable, if (state.eq.enable) 1 else 0)
+        dispatchEqBands(effect, state.eq.bands)
 
         // Dynamic EQ
-        effect.setParameter(
-            ViperParams.PARAM_HP_DYNAMIC_EQ_ENABLE,
-            if (state.dynamicEq.hp.enabled) 1 else 0,
-        )
-        for (b in 0 until state.dynamicEq.hp.bandCount) {
-            effect.setParameter(
-                ViperParams.PARAM_HP_DYNAMIC_EQ_BAND_FREQ,
-                b,
-                state.dynamicEq.hp.freqs
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 1000,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_DYNAMIC_EQ_BAND_Q,
-                b,
-                state.dynamicEq.hp.qs
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 150,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_DYNAMIC_EQ_BAND_GAIN,
-                b,
-                state.dynamicEq.hp.gains
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 0,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_DYNAMIC_EQ_BAND_THRESHOLD,
-                b,
-                state.dynamicEq.hp.thresholds
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: -300,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_DYNAMIC_EQ_BAND_ATTACK,
-                b,
-                state.dynamicEq.hp.attacks
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 10,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_DYNAMIC_EQ_BAND_RELEASE,
-                b,
-                state.dynamicEq.hp.releases
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 100,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_HP_DYNAMIC_EQ_BAND_FILTER_TYPE,
-                b,
-                state.dynamicEq.hp.filterTypes
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 0,
-            )
+        effect.setParameter(ViperParams.kParamDynamicEqEnable, if (state.dynamicEq.enable) 1 else 0)
+        val deq = state.dynamicEq
+        for (b in 0 until deq.bandCount) {
+            effect.setParameter(ViperParams.kParamDynamicEqBandFrequency, b, deq.freqs.getOrElse(b) { 1000 })
+            effect.setParameter(ViperParams.kParamDynamicEqBandQ, b, deq.qs.getOrElse(b) { 150 })
+            effect.setParameter(ViperParams.kParamDynamicEqBandGain, b, deq.gains.getOrElse(b) { 0 })
+            effect.setParameter(ViperParams.kParamDynamicEqBandThreshold, b, deq.thresholds.getOrElse(b) { -300 })
+            effect.setParameter(ViperParams.kParamDynamicEqBandAttack, b, deq.attacks.getOrElse(b) { 10 })
+            effect.setParameter(ViperParams.kParamDynamicEqBandRelease, b, deq.releases.getOrElse(b) { 100 })
+            effect.setParameter(ViperParams.kParamDynamicEqBandFilterType, b, deq.filterTypes.getOrElse(b) { 0 })
         }
-        effect.setParameter(
-            ViperParams.PARAM_HP_DYNAMIC_EQ_BAND_COUNT,
-            state.dynamicEq.hp.bandCount,
-        )
+        effect.setParameter(ViperParams.kParamDynamicEqBandCount, state.dynamicEq.bandCount)
 
         // Convolver
-        effect.setParameter(
-            ViperParams.PARAM_HP_CONVOLVER_ENABLE,
-            if (state.convolver.hp.enabled) 1 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_CONVOLVER_CROSS_CHANNEL,
-            state.convolver.hp.crossChannel,
-        )
+        effect.setParameter(ViperParams.kParamConvolverEnable, if (state.convolver.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamConvolverCrossChannel, state.convolver.crossChannel)
 
         // Field Surround
-        effect.setParameter(
-            ViperParams.PARAM_HP_FIELD_SURROUND_ENABLE,
-            if (state.fieldSurround.hp.enabled) 1 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_FIELD_SURROUND_WIDENING,
-            fieldSurroundWideningToRaw(state.fieldSurround.hp.widening),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_FIELD_SURROUND_MID_IMAGE,
-            fieldSurroundMidImageToRaw(state.fieldSurround.hp.midImage),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_FIELD_SURROUND_DEPTH,
-            fieldSurroundDepthToRaw(state.fieldSurround.hp.depth),
-        )
+        effect.setParameter(ViperParams.kParamFieldSurroundEnable, if (state.fieldSurround.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamFieldSurroundWidening, fieldSurroundWideningToRaw(state.fieldSurround.widening))
+        effect.setParameter(ViperParams.kParamFieldSurroundMidImage, fieldSurroundMidImageToRaw(state.fieldSurround.midImage))
+        effect.setParameter(ViperParams.kParamFieldSurroundDepth, fieldSurroundDepthToRaw(state.fieldSurround.depth))
 
         // Diff Surround
-        effect.setParameter(
-            ViperParams.PARAM_HP_DIFF_SURROUND_ENABLE,
-            if (state.diffSurround.hp.enabled) 1 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_DIFF_SURROUND_DELAY,
-            diffSurroundDelayToRaw(state.diffSurround.hp.delay),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_DIFF_SURROUND_REVERSE,
-            if (state.diffSurround.hp.reverse) 1 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_DIFF_SURROUND_WET_DRY_MIX,
-            state.diffSurround.hp.wetDryMix,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_DIFF_SURROUND_LP_CUTOFF,
-            state.diffSurround.hp.lpCutoff,
-        )
+        effect.setParameter(ViperParams.kParamDiffSurroundEnable, if (state.diffSurround.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamDiffSurroundDelay, diffSurroundDelayToRaw(state.diffSurround.delay))
+        effect.setParameter(ViperParams.kParamDiffSurroundReverse, if (state.diffSurround.reverse) 1 else 0)
+        effect.setParameter(ViperParams.kParamDiffSurroundWetDryMix, state.diffSurround.wetDryMix)
+        effect.setParameter(ViperParams.kParamDiffSurroundLpCutoff, state.diffSurround.lpCutoff)
 
         // Stereo Imager
-        effect.setParameter(
-            ViperParams.PARAM_HP_STEREO_IMAGER_ENABLE,
-            if (state.stereoImg.hp.enabled) 1 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_STEREO_IMAGER_LOW_WIDTH,
-            state.stereoImg.hp.lowWidth,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_STEREO_IMAGER_MID_WIDTH,
-            state.stereoImg.hp.midWidth,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_STEREO_IMAGER_HIGH_WIDTH,
-            state.stereoImg.hp.highWidth,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_STEREO_IMAGER_LOW_CROSSOVER,
-            state.stereoImg.hp.lowCrossover,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_STEREO_IMAGER_HIGH_CROSSOVER,
-            state.stereoImg.hp.highCrossover,
-        )
+        effect.setParameter(ViperParams.kParamStereoImagerEnable, if (state.stereoImager.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamStereoImagerLowWidth, state.stereoImager.lowWidth)
+        effect.setParameter(ViperParams.kParamStereoImagerMidWidth, state.stereoImager.midWidth)
+        effect.setParameter(ViperParams.kParamStereoImagerHighWidth, state.stereoImager.highWidth)
+        effect.setParameter(ViperParams.kParamStereoImagerLowCrossover, state.stereoImager.lowCrossover)
+        effect.setParameter(ViperParams.kParamStereoImagerHighCrossover, state.stereoImager.highCrossover)
 
         // Headphone Surround
-        effect.setParameter(
-            ViperParams.PARAM_HP_HEADPHONE_SURROUND_ENABLE,
-            if (state.vhe.hp.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_HP_HEADPHONE_SURROUND_STRENGTH, state.vhe.hp.quality)
+        effect.setParameter(ViperParams.kParamHeadphoneSurroundEnable, if (state.headphoneSurround.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamHeadphoneSurroundQuality, state.headphoneSurround.quality)
 
         // Reverb
-        effect.setParameter(
-            ViperParams.PARAM_HP_REVERB_ENABLE,
-            if (state.reverb.hp.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_HP_REVERB_ROOM_SIZE, state.reverb.hp.roomSize * 10)
-        effect.setParameter(ViperParams.PARAM_HP_REVERB_ROOM_WIDTH, state.reverb.hp.width * 10)
-        effect.setParameter(ViperParams.PARAM_HP_REVERB_ROOM_DAMPENING, state.reverb.hp.dampening)
-        effect.setParameter(ViperParams.PARAM_HP_REVERB_ROOM_WET_SIGNAL, state.reverb.hp.wet)
-        effect.setParameter(ViperParams.PARAM_HP_REVERB_ROOM_DRY_SIGNAL, state.reverb.hp.dry)
+        effect.setParameter(ViperParams.kParamReverbEnable, if (state.reverb.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamReverbRoomSize, state.reverb.roomSize * 10)
+        effect.setParameter(ViperParams.kParamReverbWidth, state.reverb.width * 10)
+        effect.setParameter(ViperParams.kParamReverbDamp, state.reverb.damp * 10)
+        effect.setParameter(ViperParams.kParamReverbWet, state.reverb.wet)
+        effect.setParameter(ViperParams.kParamReverbDry, state.reverb.dry)
 
         // Dynamic System
-        dispatchDynamicSystem(
-            effect,
-            state.dynamicSystem.hp.enabled,
-            state.dynamicSystem.hp.device,
-            state.dynamicSystem.hp.strength,
-            ViperParams.PARAM_HP_DYNAMIC_SYSTEM_ENABLE,
-            ViperParams.PARAM_HP_DYNAMIC_SYSTEM_STRENGTH,
-            ViperParams.PARAM_HP_DYNAMIC_SYSTEM_X_COEFFICIENTS,
-            ViperParams.PARAM_HP_DYNAMIC_SYSTEM_Y_COEFFICIENTS,
-            ViperParams.PARAM_HP_DYNAMIC_SYSTEM_SIDE_GAIN,
-        )
+        dispatchDynamicSystem(effect, state.dynamicSystem)
 
         // Tube Simulator
-        effect.setParameter(
-            ViperParams.PARAM_HP_TUBE_SIMULATOR_ENABLE,
-            if (state.tube.hp.enabled) 1 else 0,
-        )
+        effect.setParameter(ViperParams.kParamTubeSimulatorEnable, if (state.tubeSimulator.enable) 1 else 0)
 
         // Psycho Bass
-        effect.setParameter(
-            ViperParams.PARAM_HP_PSYCHO_BASS_ENABLE,
-            if (state.psychoBass.hp.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_HP_PSYCHO_BASS_CUTOFF, state.psychoBass.hp.cutoff)
-        effect.setParameter(
-            ViperParams.PARAM_HP_PSYCHO_BASS_INTENSITY,
-            state.psychoBass.hp.intensity,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_PSYCHO_BASS_HARMONIC_ORDER,
-            state.psychoBass.hp.harmonicOrder,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_HP_PSYCHO_BASS_ORIGINAL_LEVEL,
-            state.psychoBass.hp.originalLevel,
-        )
+        effect.setParameter(ViperParams.kParamPsychoacousticBassEnable, if (state.psychoacousticBass.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamPsychoacousticBassCutoff, state.psychoacousticBass.cutoff)
+        effect.setParameter(ViperParams.kParamPsychoacousticBassIntensity, state.psychoacousticBass.intensity)
+        effect.setParameter(ViperParams.kParamPsychoacousticBassHarmonicOrder, state.psychoacousticBass.harmonicOrder)
+        effect.setParameter(ViperParams.kParamPsychoacousticBassOriginalLevel, state.psychoacousticBass.originalLevel)
 
         // Bass
-        effect.setParameter(ViperParams.PARAM_HP_BASS_ENABLE, if (state.bass.hp.enabled) 1 else 0)
-        effect.setParameter(ViperParams.PARAM_HP_BASS_MODE, state.bass.hp.mode)
-        effect.setParameter(
-            ViperParams.PARAM_HP_BASS_FREQUENCY,
-            bassFrequencyToRaw(state.bass.hp.frequency),
-        )
-        effect.setParameter(ViperParams.PARAM_HP_BASS_GAIN, state.bass.hp.gain)
-        effect.setParameter(ViperParams.PARAM_HP_BASS_ANTI_POP, if (state.bass.hp.antiPop) 1 else 0)
+        effect.setParameter(ViperParams.kParamBassEnable, if (state.bass.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamBassMode, state.bass.mode)
+        effect.setParameter(ViperParams.kParamBassFrequency, bassFrequencyToRaw(state.bass.frequency))
+        effect.setParameter(ViperParams.kParamBassGain, state.bass.gain)
+        effect.setParameter(ViperParams.kParamBassAntiPop, if (state.bass.antiPop) 1 else 0)
 
         // Bass Mono
-        effect.setParameter(
-            ViperParams.PARAM_HP_BASS_MONO_ENABLE,
-            if (state.bassMono.hp.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_HP_BASS_MONO_MODE, state.bassMono.hp.mode)
-        effect.setParameter(
-            ViperParams.PARAM_HP_BASS_MONO_FREQUENCY,
-            bassFrequencyToRaw(state.bassMono.hp.frequency),
-        )
-        effect.setParameter(ViperParams.PARAM_HP_BASS_MONO_GAIN, state.bassMono.hp.gain)
-        effect.setParameter(
-            ViperParams.PARAM_HP_BASS_MONO_ANTI_POP,
-            if (state.bassMono.hp.antiPop) 1 else 0,
-        )
+        effect.setParameter(ViperParams.kParamBassMonoEnable, if (state.bassMono.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamBassMonoMode, state.bassMono.mode)
+        effect.setParameter(ViperParams.kParamBassMonoFrequency, bassFrequencyToRaw(state.bassMono.frequency))
+        effect.setParameter(ViperParams.kParamBassMonoGain, state.bassMono.gain)
+        effect.setParameter(ViperParams.kParamBassMonoAntiPop, if (state.bassMono.antiPop) 1 else 0)
 
         // Clarity
-        effect.setParameter(
-            ViperParams.PARAM_HP_CLARITY_ENABLE,
-            if (state.clarity.hp.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_HP_CLARITY_MODE, state.clarity.hp.mode)
-        effect.setParameter(ViperParams.PARAM_HP_CLARITY_GAIN, state.clarity.hp.gain)
+        effect.setParameter(ViperParams.kParamClarityEnable, if (state.clarity.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamClarityMode, state.clarity.mode)
+        effect.setParameter(ViperParams.kParamClarityGain, state.clarity.gain)
 
         // Cure
-        effect.setParameter(ViperParams.PARAM_HP_CURE_ENABLE, if (state.cure.hp.enabled) 1 else 0)
-        effect.setParameter(ViperParams.PARAM_HP_CURE_STRENGTH, state.cure.hp.strength)
+        effect.setParameter(ViperParams.kParamCureEnable, if (state.cure.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamCureCrossfeedPreset, state.cure.crossfeedPreset)
 
         // AnalogX
-        effect.setParameter(
-            ViperParams.PARAM_HP_ANALOGX_ENABLE,
-            if (state.analog.hp.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_HP_ANALOGX_MODE, state.analog.hp.mode)
-    }
-
-    fun dispatchSpeakerState(
-        effect: ViperEffect,
-        state: MainUiState,
-    ) {
-        // Output
-        effect.setParameter(ViperParams.PARAM_SPK_OUTPUT_VOLUME, state.out.spk.volume)
-        effect.setParameter(ViperParams.PARAM_SPK_CHANNEL_PAN, state.out.spk.channelPan)
-        effect.setParameter(ViperParams.PARAM_SPK_LIMITER, state.out.spk.limiter)
-
-        // AGC
-        effect.setParameter(ViperParams.PARAM_SPK_AGC_ENABLE, if (state.agc.spk.enabled) 1 else 0)
-        effect.setParameter(ViperParams.PARAM_SPK_AGC_RATIO, state.agc.spk.strength)
-        effect.setParameter(ViperParams.PARAM_SPK_AGC_MAX_SCALER, state.agc.spk.maxGain)
-        effect.setParameter(ViperParams.PARAM_SPK_AGC_VOLUME, state.agc.spk.outputThreshold)
-
-        // LUFS
-        effect.setParameter(ViperParams.PARAM_SPK_LUFS_ENABLE, if (state.lufs.spk.enabled) 1 else 0)
-        effect.setParameter(ViperParams.PARAM_SPK_LUFS_TARGET, state.lufs.spk.target)
-        effect.setParameter(ViperParams.PARAM_SPK_LUFS_MAX_GAIN, state.lufs.spk.maxGain)
-        effect.setParameter(ViperParams.PARAM_SPK_LUFS_SPEED, state.lufs.spk.speed)
-
-        // FET Compressor
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_ENABLE,
-            if (state.fet.spk.enabled) 100 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_THRESHOLD,
-            fetThresholdToRaw(state.fet.spk.threshold),
-        )
-        effect.setParameter(ViperParams.PARAM_SPK_FET_COMPRESSOR_RATIO, state.fet.spk.ratio)
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_AUTO_KNEE,
-            if (state.fet.spk.autoKnee) 100 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_KNEE,
-            fetKneeToRaw(state.fet.spk.knee),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_KNEE_MULTI,
-            state.fet.spk.kneeMulti,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_AUTO_GAIN,
-            if (state.fet.spk.autoGain) 100 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_GAIN,
-            fetGainToRaw(state.fet.spk.gain),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_AUTO_ATTACK,
-            if (state.fet.spk.autoAttack) 100 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_ATTACK,
-            fetAttackMsToRaw(state.fet.spk.attack),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_MAX_ATTACK,
-            fetAttackMsToRaw(state.fet.spk.maxAttack),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_AUTO_RELEASE,
-            if (state.fet.spk.autoRelease) 100 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_RELEASE,
-            fetReleaseMsToRaw(state.fet.spk.release),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_MAX_RELEASE,
-            fetReleaseMsToRaw(state.fet.spk.maxRelease),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_CREST,
-            fetReleaseMsToRaw(state.fet.spk.crest),
-        )
-        effect.setParameter(ViperParams.PARAM_SPK_FET_COMPRESSOR_ADAPT, state.fet.spk.adapt)
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FET_COMPRESSOR_NO_CLIP,
-            if (state.fet.spk.noClip) 100 else 0,
-        )
-
-        // Multiband Compressor
-        effect.setParameter(
-            ViperParams.PARAM_SPK_MULTIBAND_COMP_ENABLE,
-            if (state.mbc.spk.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_COUNT, 5)
-        val spkMbcCrossoverDefaults = intArrayOf(120, 500, 4000, 8000)
-        val spkMbcCrossovers =
-            state.mbc.spk.crossovers
-                .split(";")
-                .mapIndexed { i, v -> v.toIntOrNull() ?: spkMbcCrossoverDefaults.getOrElse(i) { 0 } }
-        for (i in spkMbcCrossoverDefaults.indices) {
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_CROSSOVER_FREQ,
-                i,
-                spkMbcCrossovers.getOrElse(i) { spkMbcCrossoverDefaults[i] },
-            )
-        }
-        val spkMbcBandEnables =
-            state.mbc.spk.bandEnables
-                .split(";")
-                .map { (it.toIntOrNull() ?: 1) != 0 }
-        for (b in 0 until 5) {
-            val bandEnabled = spkMbcBandEnables.getOrElse(b) { true }
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_ENABLE,
-                b,
-                if (bandEnabled) 100 else 0,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_THRESHOLD,
-                b,
-                fetThresholdToRaw(
-                    state.mbc.spk.thresholds
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: -18,
-                ),
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_RATIO,
-                b,
-                state.mbc.spk.ratios
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 50,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_GAIN,
-                b,
-                fetGainToRaw(
-                    state.mbc.spk.gains
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: 24,
-                ),
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_ATTACK,
-                b,
-                fetAttackMsToRaw(
-                    state.mbc.spk.attacks
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: 1,
-                ),
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_RELEASE,
-                b,
-                fetReleaseMsToRaw(
-                    state.mbc.spk.releases
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: 100,
-                ),
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_KNEE,
-                b,
-                fetKneeToRaw(
-                    state.mbc.spk.knees
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: 0,
-                ),
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_GAIN,
-                b,
-                if ((
-                        state.mbc.spk.autoGains
-                            .split(";")
-                            .getOrNull(b)
-                            ?.toIntOrNull()
-                            ?: 1
-                    ) != 0
-                ) {
-                    100
-                } else {
-                    0
-                },
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_ATTACK,
-                b,
-                if ((
-                        state.mbc.spk.autoAttacks
-                            .split(";")
-                            .getOrNull(b)
-                            ?.toIntOrNull()
-                            ?: 1
-                    ) != 0
-                ) {
-                    100
-                } else {
-                    0
-                },
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_RELEASE,
-                b,
-                if ((
-                        state.mbc.spk.autoReleases
-                            .split(";")
-                            .getOrNull(b)
-                            ?.toIntOrNull()
-                            ?: 1
-                    ) != 0
-                ) {
-                    100
-                } else {
-                    0
-                },
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_KNEE,
-                b,
-                if ((
-                        state.mbc.spk.autoKnees
-                            .split(";")
-                            .getOrNull(b)
-                            ?.toIntOrNull()
-                            ?: 1
-                    ) != 0
-                ) {
-                    100
-                } else {
-                    0
-                },
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_KNEE_MULTI,
-                b,
-                state.mbc.spk.kneeMultis
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 0,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_MAX_ATTACK,
-                b,
-                fetAttackMsToRaw(
-                    state.mbc.spk.maxAttacks
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: 44,
-                ),
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_MAX_RELEASE,
-                b,
-                fetReleaseMsToRaw(
-                    state.mbc.spk.maxReleases
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: 200,
-                ),
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_CREST,
-                b,
-                fetReleaseMsToRaw(
-                    state.mbc.spk.crests
-                        .split(";")
-                        .getOrNull(b)
-                        ?.toIntOrNull() ?: 100,
-                ),
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_ADAPT,
-                b,
-                state.mbc.spk.adapts
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 50,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_MULTIBAND_COMP_BAND_NO_CLIP,
-                b,
-                if ((
-                        state.mbc.spk.noClips
-                            .split(";")
-                            .getOrNull(b)
-                            ?.toIntOrNull()
-                            ?: 1
-                    ) != 0
-                ) {
-                    100
-                } else {
-                    0
-                },
-            )
-        }
-
-        // DDC
-        effect.setParameter(ViperParams.PARAM_SPK_DDC_ENABLE, if (state.ddc.spk.enabled) 1 else 0)
-
-        // Spectrum Extension
-        effect.setParameter(
-            ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_ENABLE,
-            if (state.vse.spk.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_BARK, state.vse.spk.strength)
-        effect.setParameter(
-            ViperParams.PARAM_SPK_SPECTRUM_EXTENSION_BARK_RECONSTRUCT,
-            vseExciterToRaw(state.vse.spk.exciter),
-        )
-
-        // EQ
-        effect.setParameter(ViperParams.PARAM_SPK_EQ_BAND_COUNT, state.eq.spk.bandCount)
-        effect.setParameter(ViperParams.PARAM_SPK_EQ_ENABLE, if (state.eq.spk.enabled) 1 else 0)
-        dispatchEqBands(effect, ViperParams.PARAM_SPK_EQ_BAND_LEVEL, state.eq.spk.bands)
-
-        // Dynamic EQ
-        effect.setParameter(
-            ViperParams.PARAM_SPK_DYNAMIC_EQ_ENABLE,
-            if (state.dynamicEq.spk.enabled) 1 else 0,
-        )
-        for (b in 0 until state.dynamicEq.spk.bandCount) {
-            effect.setParameter(
-                ViperParams.PARAM_SPK_DYNAMIC_EQ_BAND_FREQ,
-                b,
-                state.dynamicEq.spk.freqs
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 1000,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_DYNAMIC_EQ_BAND_Q,
-                b,
-                state.dynamicEq.spk.qs
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 150,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_DYNAMIC_EQ_BAND_GAIN,
-                b,
-                state.dynamicEq.spk.gains
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 0,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_DYNAMIC_EQ_BAND_THRESHOLD,
-                b,
-                state.dynamicEq.spk.thresholds
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: -300,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_DYNAMIC_EQ_BAND_ATTACK,
-                b,
-                state.dynamicEq.spk.attacks
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 10,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_DYNAMIC_EQ_BAND_RELEASE,
-                b,
-                state.dynamicEq.spk.releases
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 100,
-            )
-            effect.setParameter(
-                ViperParams.PARAM_SPK_DYNAMIC_EQ_BAND_FILTER_TYPE,
-                b,
-                state.dynamicEq.spk.filterTypes
-                    .split(";")
-                    .getOrNull(b)
-                    ?.toIntOrNull() ?: 0,
-            )
-        }
-        effect.setParameter(
-            ViperParams.PARAM_SPK_DYNAMIC_EQ_BAND_COUNT,
-            state.dynamicEq.spk.bandCount,
-        )
-
-        // Convolver
-        effect.setParameter(
-            ViperParams.PARAM_SPK_CONVOLVER_ENABLE,
-            if (state.convolver.spk.enabled) 1 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_CONVOLVER_CROSS_CHANNEL,
-            state.convolver.spk.crossChannel,
-        )
-
-        // Field Surround
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FIELD_SURROUND_ENABLE,
-            if (state.fieldSurround.spk.enabled) 1 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FIELD_SURROUND_WIDENING,
-            fieldSurroundWideningToRaw(state.fieldSurround.spk.widening),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FIELD_SURROUND_MID_IMAGE,
-            fieldSurroundMidImageToRaw(state.fieldSurround.spk.midImage),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_FIELD_SURROUND_DEPTH,
-            fieldSurroundDepthToRaw(state.fieldSurround.spk.depth),
-        )
-
-        // Diff Surround
-        effect.setParameter(
-            ViperParams.PARAM_SPK_DIFF_SURROUND_ENABLE,
-            if (state.diffSurround.spk.enabled) 1 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_DIFF_SURROUND_DELAY,
-            diffSurroundDelayToRaw(state.diffSurround.spk.delay),
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_DIFF_SURROUND_REVERSE,
-            if (state.diffSurround.spk.reverse) 1 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_DIFF_SURROUND_WET_DRY_MIX,
-            state.diffSurround.spk.wetDryMix,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_DIFF_SURROUND_LP_CUTOFF,
-            state.diffSurround.spk.lpCutoff,
-        )
-
-        // Stereo Imager
-        effect.setParameter(
-            ViperParams.PARAM_SPK_STEREO_IMAGER_ENABLE,
-            if (state.stereoImg.spk.enabled) 1 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_STEREO_IMAGER_LOW_WIDTH,
-            state.stereoImg.spk.lowWidth,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_STEREO_IMAGER_MID_WIDTH,
-            state.stereoImg.spk.midWidth,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_STEREO_IMAGER_HIGH_WIDTH,
-            state.stereoImg.spk.highWidth,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_STEREO_IMAGER_LOW_CROSSOVER,
-            state.stereoImg.spk.lowCrossover,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_STEREO_IMAGER_HIGH_CROSSOVER,
-            state.stereoImg.spk.highCrossover,
-        )
-
-        // Headphone Surround
-        effect.setParameter(
-            ViperParams.PARAM_SPK_HEADPHONE_SURROUND_ENABLE,
-            if (state.vhe.spk.enabled) 1 else 0,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_HEADPHONE_SURROUND_STRENGTH,
-            state.vhe.spk.quality,
-        )
-
-        // Reverb
-        effect.setParameter(
-            ViperParams.PARAM_SPK_REVERB_ENABLE,
-            if (state.reverb.spk.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_SIZE, state.reverb.spk.roomSize * 10)
-        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_WIDTH, state.reverb.spk.width * 10)
-        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_DAMPENING, state.reverb.spk.dampening)
-        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_WET_SIGNAL, state.reverb.spk.wet)
-        effect.setParameter(ViperParams.PARAM_SPK_REVERB_ROOM_DRY_SIGNAL, state.reverb.spk.dry)
-
-        // Dynamic System
-        dispatchDynamicSystem(
-            effect,
-            state.dynamicSystem.spk.enabled,
-            state.dynamicSystem.spk.device,
-            state.dynamicSystem.spk.strength,
-            ViperParams.PARAM_SPK_DYNAMIC_SYSTEM_ENABLE,
-            ViperParams.PARAM_SPK_DYNAMIC_SYSTEM_STRENGTH,
-            ViperParams.PARAM_SPK_DYNAMIC_SYSTEM_X_COEFFICIENTS,
-            ViperParams.PARAM_SPK_DYNAMIC_SYSTEM_Y_COEFFICIENTS,
-            ViperParams.PARAM_SPK_DYNAMIC_SYSTEM_SIDE_GAIN,
-        )
-
-        // Tube Simulator
-        effect.setParameter(
-            ViperParams.PARAM_SPK_TUBE_SIMULATOR_ENABLE,
-            if (state.tube.spk.enabled) 1 else 0,
-        )
-
-        // Psycho Bass
-        effect.setParameter(
-            ViperParams.PARAM_SPK_PSYCHO_BASS_ENABLE,
-            if (state.psychoBass.spk.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_SPK_PSYCHO_BASS_CUTOFF, state.psychoBass.spk.cutoff)
-        effect.setParameter(
-            ViperParams.PARAM_SPK_PSYCHO_BASS_INTENSITY,
-            state.psychoBass.spk.intensity,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_PSYCHO_BASS_HARMONIC_ORDER,
-            state.psychoBass.spk.harmonicOrder,
-        )
-        effect.setParameter(
-            ViperParams.PARAM_SPK_PSYCHO_BASS_ORIGINAL_LEVEL,
-            state.psychoBass.spk.originalLevel,
-        )
-
-        // Bass
-        effect.setParameter(ViperParams.PARAM_SPK_BASS_ENABLE, if (state.bass.spk.enabled) 1 else 0)
-        effect.setParameter(ViperParams.PARAM_SPK_BASS_MODE, state.bass.spk.mode)
-        effect.setParameter(
-            ViperParams.PARAM_SPK_BASS_FREQUENCY,
-            bassFrequencyToRaw(state.bass.spk.frequency),
-        )
-        effect.setParameter(ViperParams.PARAM_SPK_BASS_GAIN, state.bass.spk.gain)
-        effect.setParameter(
-            ViperParams.PARAM_SPK_BASS_ANTI_POP,
-            if (state.bass.spk.antiPop) 1 else 0,
-        )
-
-        // Bass Mono
-        effect.setParameter(
-            ViperParams.PARAM_SPK_BASS_MONO_ENABLE,
-            if (state.bassMono.spk.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_SPK_BASS_MONO_MODE, state.bassMono.spk.mode)
-        effect.setParameter(
-            ViperParams.PARAM_SPK_BASS_MONO_FREQUENCY,
-            bassFrequencyToRaw(state.bassMono.spk.frequency),
-        )
-        effect.setParameter(ViperParams.PARAM_SPK_BASS_MONO_GAIN, state.bassMono.spk.gain)
-        effect.setParameter(
-            ViperParams.PARAM_SPK_BASS_MONO_ANTI_POP,
-            if (state.bassMono.spk.antiPop) 1 else 0,
-        )
-
-        // Clarity
-        effect.setParameter(
-            ViperParams.PARAM_SPK_CLARITY_ENABLE,
-            if (state.clarity.spk.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_SPK_CLARITY_MODE, state.clarity.spk.mode)
-        effect.setParameter(ViperParams.PARAM_SPK_CLARITY_GAIN, state.clarity.spk.gain)
-
-        effect.setParameter(ViperParams.PARAM_SPK_CURE_ENABLE, if (state.cure.spk.enabled) 1 else 0)
-        effect.setParameter(ViperParams.PARAM_SPK_CURE_STRENGTH, state.cure.spk.strength)
-
-        // AnalogX
-        effect.setParameter(
-            ViperParams.PARAM_SPK_ANALOGX_ENABLE,
-            if (state.analog.spk.enabled) 1 else 0,
-        )
-        effect.setParameter(ViperParams.PARAM_SPK_ANALOGX_MODE, state.analog.spk.mode)
+        effect.setParameter(ViperParams.kParamAnalogXEnable, if (state.analogX.enable) 1 else 0)
+        effect.setParameter(ViperParams.kParamAnalogXMode, state.analogX.mode)
 
         // Speaker Correction
-        effect.setParameter(
-            ViperParams.PARAM_SPK_SPEAKER_CORRECTION_ENABLE,
-            if (state.speakerCorrection.spk.enabled) 1 else 0,
-        )
+        effect.setParameter(ViperParams.kParamSpeakerCorrectionEnable, if (state.speakerCorrection.enable) 1 else 0)
     }
 
     fun dispatchEqBands(
         effect: ViperEffect,
-        param: Int,
-        bandsString: String,
+        bands: List<Double>,
     ) {
-        val bands = bandsString.split(";").filter { it.isNotBlank() }
-        for ((index, bandStr) in bands.withIndex()) {
-            val level = (bandStr.toFloatOrNull() ?: 0f) * 100
-            effect.setParameter(param, index, level.toInt())
+        for ((index, bandDb) in bands.withIndex()) {
+            val level = (bandDb * 100).toInt()
+            effect.setParameter(ViperParams.kParamEqualizerBandLevel, index, level)
         }
     }
 
     private fun dispatchDynamicSystem(
         effect: ViperEffect,
-        enabled: Boolean,
-        deviceIndex: Int,
-        strength: Int,
-        paramEnable: Int,
-        paramStrength: Int,
-        paramXCoeffs: Int,
-        paramYCoeffs: Int,
-        paramSideGain: Int,
+        state: DynamicSystemState,
     ) {
-        effect.setParameter(paramEnable, if (enabled) 1 else 0)
+        effect.setParameter(ViperParams.kParamDynamicSystemEnable, if (state.enable) 1 else 0)
         FileLogger.d(
             "Dispatch",
-            "DynamicSystem: ${if (enabled) "ON" else "OFF"} device=$deviceIndex strength=$strength",
+            "DynamicSystem: ${if (state.enable) "ON" else "OFF"} strength=${state.strength} " +
+                "x=[${state.xLow},${state.xHigh}] y=[${state.yLow},${state.yHigh}] " +
+                "side=[${state.sideGainLow},${state.sideGainHigh}]",
         )
-        effect.setParameter(paramStrength, dynamicSystemStrengthToRaw(strength))
-        val preset = BUILTIN_DS_PRESETS.getOrElse(deviceIndex) { BUILTIN_DS_PRESETS[0] }
-        effect.setParameter(paramXCoeffs, preset.xLow, preset.xHigh)
-        effect.setParameter(paramYCoeffs, preset.yLow, preset.yHigh)
-        effect.setParameter(paramSideGain, preset.sideGainLow, preset.sideGainHigh)
+        effect.setParameter(ViperParams.kParamDynamicSystemStrength, dynamicSystemStrengthToRaw(state.strength))
+        effect.setParameter(ViperParams.kParamDynamicSystemXCoefficients, state.xLow, state.xHigh)
+        effect.setParameter(ViperParams.kParamDynamicSystemYCoefficients, state.yLow, state.yHigh)
+        effect.setParameter(ViperParams.kParamDynamicSystemSideGain, state.sideGainLow, state.sideGainHigh)
     }
 
     suspend fun loadFullStateFromPrefs(repository: ViperRepository): MainUiState {
-        val fxType =
-            repository
-                .getIntPreference(ViperRepository.PREF_FX_TYPE, ViperParams.FX_TYPE_HEADPHONE)
-                .first()
-        var s = loadEffectPrefs(repository, isSpk = false)
-        s = loadEffectPrefs(repository, isSpk = true, state = s)
-        val eqBands = ensureBandCount(s.eq.hp.bands, s.eq.hp.bandCount)
-        val spkEqBands = ensureBandCount(s.eq.spk.bands, s.eq.spk.bandCount)
-        return s.copy(
-            fxType = fxType,
-            eq =
-                s.eq.copy(
-                    hp = s.eq.hp.copy(bands = eqBands),
-                    spk = s.eq.spk.copy(bands = spkEqBands),
-                ),
-        )
+        val s = loadEffectPrefs(repository)
+        val eqBands = ensureBandCount(s.eq.bands, s.eq.bandCount)
+        return s.copy(eq = s.eq.copy(bands = eqBands))
+    }
+
+    fun dispatchDdcCoefficients(
+        effect: ViperEffect,
+        sec44100: List<FloatArray>,
+        sec48000: List<FloatArray>,
+    ) {
+        if (sec44100.size != sec48000.size) {
+            FileLogger.w(
+                "Dispatch",
+                "dispatchDdcCoefficients: section count mismatch (44.1k=${sec44100.size} vs 48k=${sec48000.size})",
+            )
+            return
+        }
+        if (sec44100.any { it.size != 5 } || sec48000.any { it.size != 5 }) {
+            FileLogger.w("Dispatch", "dispatchDdcCoefficients: section size != 5")
+            return
+        }
+        val sectionCount = sec44100.size
+        val floatsPerRate = sectionCount * 5
+        val naturalSize = 4 + floatsPerRate * 4 * 2
+        val wireSize =
+            when {
+                naturalSize <= 256 -> {
+                    256
+                }
+
+                naturalSize <= 1024 -> {
+                    1024
+                }
+
+                else -> {
+                    FileLogger.w(
+                        "Dispatch",
+                        "dispatchDdcCoefficients: blob too large ($naturalSize bytes; max 1024)",
+                    )
+                    return
+                }
+            }
+        val bytes = ByteArray(wireSize)
+        val bb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        bb.putInt(floatsPerRate)
+        for (s in sec44100) for (v in s) bb.putFloat(v)
+        for (s in sec48000) for (v in s) bb.putFloat(v)
+        effect.setParameter(ViperParams.kParamDdcCoefficients, bytes)
     }
 }
