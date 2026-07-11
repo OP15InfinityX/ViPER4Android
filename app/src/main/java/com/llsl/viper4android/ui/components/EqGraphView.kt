@@ -285,7 +285,7 @@ private fun buildSplinePath(points: List<Offset>): Path {
 @Composable
 fun EqEditDialog(
     bands: List<Float>,
-    onBandsChange: (String) -> Unit,
+    onBandsChange: (List<Double>) -> Unit,
     presetId: Long?,
     presets: List<EqPreset>,
     onPresetSelect: (Long) -> Unit,
@@ -398,15 +398,14 @@ fun EqEditDialog(
 
                         val applyBandChange = { newVal: Float ->
                             localBands[index] = newVal.coerceIn(DB_MIN, DB_MAX)
-                            val str =
-                                localBands.joinToString(";") {
-                                    String.format(
-                                        Locale.US,
-                                        "%.1f",
-                                        it,
-                                    )
-                                } + ";"
-                            onBandsChange(str)
+                            // Native List<Double> on the wire (canonical v2);
+                            // round to 1 decimal at the boundary to match
+                            // legacy SP "%.1f" precision.
+                            val list =
+                                localBands.map {
+                                    String.format(Locale.US, "%.1f", it).toDouble()
+                                }
+                            onBandsChange(list)
                         }
 
                         Row(
