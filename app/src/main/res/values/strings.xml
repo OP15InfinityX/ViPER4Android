@@ -271,6 +271,7 @@
     <string name="debug_filter_all">All</string>
     <string name="debug_filter_info">Info</string>
     <string name="debug_filter_debug">Debug</string>
+    <string name="debug_filter_warn">Warn</string>
     <string name="debug_filter_error">Error</string>
     <string name="debug_filter_app">App</string>
     <string name="debug_filter_driver">Driver</string>

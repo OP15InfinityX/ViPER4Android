@@ -37,7 +37,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -85,7 +84,6 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showDebugLog by remember { mutableStateOf(false) }
     var showDeviceDialog by remember { mutableStateOf(false) }
-    var debugLogClearTime by remember { mutableLongStateOf(0L) }
 
     val context = LocalContext.current
     val appVersionName =
@@ -138,8 +136,6 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
 
     if (showDebugLog) {
         DebugLogDialog(
-            clearTimestamp = debugLogClearTime,
-            onClear = { debugLogClearTime = System.currentTimeMillis() },
             onDisableDebug = {
                 viewModel.disableDebugMode()
                 showDebugLog = false

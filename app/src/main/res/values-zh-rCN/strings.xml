@@ -271,6 +271,7 @@
     <string name="debug_filter_all">全部</string>
     <string name="debug_filter_info">信息</string>
     <string name="debug_filter_debug">调试</string>
+    <string name="debug_filter_warn">Warn</string>
     <string name="debug_filter_error">错误</string>
     <string name="debug_filter_app">应用</string>
     <string name="debug_filter_driver">驱动</string>
