@@ -1305,6 +1305,13 @@ val EFFECT_PREFS: List<EffectPref<*>> =
 val EFFECT_PREFS_BY_PARAM_ID: Map<Int, EffectPref<*>> =
     EFFECT_PREFS.filter { it.paramId != -1 }.associateBy { it.paramId }
 
+val ENABLE_PREF_BY_EFFECT_KEY: Map<String, BoolPref> =
+    EFFECT_GROUPS
+        .mapNotNull { group ->
+            val enable = group.prefs.firstOrNull { it.jsonKey == "enable" } as? BoolPref
+            enable?.let { group.effectKey to it }
+        }.toMap()
+
 private fun spJoinInts(list: List<Int>): String = list.joinToString(";")
 
 private fun spSplitInts(
