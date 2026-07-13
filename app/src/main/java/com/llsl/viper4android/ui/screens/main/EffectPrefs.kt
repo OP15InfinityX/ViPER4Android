@@ -194,7 +194,7 @@ data class EffectGroup(
 class MasterLimiterEffect : EffectGroupBuilder("masterLimiter") {
     val threshold =
         int(
-            ViperParams.kParamMasterLimiterThreshold,
+            ViperParams.PARAM_MASTER_LIMITER_THRESHOLD,
             "threshold",
             100,
             { it.out.limiter },
@@ -202,7 +202,7 @@ class MasterLimiterEffect : EffectGroupBuilder("masterLimiter") {
         )
     val outputVolume =
         int(
-            ViperParams.kParamMasterLimiterOutputVolume,
+            ViperParams.PARAM_MASTER_LIMITER_OUTPUT_VOLUME,
             "outputVolume",
             100,
             { it.out.volume },
@@ -210,7 +210,7 @@ class MasterLimiterEffect : EffectGroupBuilder("masterLimiter") {
         )
     val channelPan =
         int(
-            ViperParams.kParamMasterLimiterChannelPan,
+            ViperParams.PARAM_MASTER_LIMITER_CHANNEL_PAN,
             "channelPan",
             0,
             { it.out.channelPan },
@@ -221,7 +221,7 @@ class MasterLimiterEffect : EffectGroupBuilder("masterLimiter") {
 class PlaybackGainControlEffect : EffectGroupBuilder("playbackGainControl") {
     val enable =
         bool(
-            ViperParams.kParamPlaybackGainControlEnable,
+            ViperParams.PARAM_PLAYBACK_GAIN_CONTROL_ENABLE,
             "enable",
             false,
             { it.playbackGainControl.enable },
@@ -229,7 +229,7 @@ class PlaybackGainControlEffect : EffectGroupBuilder("playbackGainControl") {
         )
     val strength =
         int(
-            ViperParams.kParamPlaybackGainControlStrength,
+            ViperParams.PARAM_PLAYBACK_GAIN_CONTROL_STRENGTH,
             "strength",
             100,
             { it.playbackGainControl.strength },
@@ -237,7 +237,7 @@ class PlaybackGainControlEffect : EffectGroupBuilder("playbackGainControl") {
         )
     val maxGain =
         int(
-            ViperParams.kParamPlaybackGainControlMaxGain,
+            ViperParams.PARAM_PLAYBACK_GAIN_CONTROL_MAX_GAIN,
             "maxGain",
             100,
             { it.playbackGainControl.maxGain },
@@ -245,7 +245,7 @@ class PlaybackGainControlEffect : EffectGroupBuilder("playbackGainControl") {
         )
     val outputThreshold =
         int(
-            ViperParams.kParamPlaybackGainControlOutputThreshold,
+            ViperParams.PARAM_PLAYBACK_GAIN_CONTROL_OUTPUT_THRESHOLD,
             "outputThreshold",
             100,
             { it.playbackGainControl.outputThreshold },
@@ -256,7 +256,7 @@ class PlaybackGainControlEffect : EffectGroupBuilder("playbackGainControl") {
 class LufsEffect : EffectGroupBuilder("lufs") {
     val enable =
         bool(
-            ViperParams.kParamLufsEnable,
+            ViperParams.PARAM_LUFS_ENABLE,
             "enable",
             false,
             { it.lufs.enable },
@@ -264,7 +264,7 @@ class LufsEffect : EffectGroupBuilder("lufs") {
         )
     val target =
         int(
-            ViperParams.kParamLufsTarget,
+            ViperParams.PARAM_LUFS_TARGET,
             "target",
             140,
             { it.lufs.target },
@@ -272,7 +272,7 @@ class LufsEffect : EffectGroupBuilder("lufs") {
         )
     val maxGain =
         int(
-            ViperParams.kParamLufsMaxGain,
+            ViperParams.PARAM_LUFS_MAX_GAIN,
             "maxGain",
             60,
             { it.lufs.maxGain },
@@ -280,7 +280,7 @@ class LufsEffect : EffectGroupBuilder("lufs") {
         )
     val speed =
         int(
-            ViperParams.kParamLufsSpeed,
+            ViperParams.PARAM_LUFS_SPEED,
             "speed",
             1,
             { it.lufs.speed },
@@ -291,7 +291,7 @@ class LufsEffect : EffectGroupBuilder("lufs") {
 class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
     val enable =
         bool(
-            ViperParams.kParamFetCompressorEnable,
+            ViperParams.PARAM_FET_COMPRESSOR_ENABLE,
             "enable",
             false,
             { it.fetCompressor.enable },
@@ -299,7 +299,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val threshold =
         int(
-            ViperParams.kParamFetCompressorThreshold,
+            ViperParams.PARAM_FET_COMPRESSOR_THRESHOLD,
             "threshold",
             -18,
             { it.fetCompressor.threshold },
@@ -307,7 +307,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val ratio =
         int(
-            ViperParams.kParamFetCompressorRatio,
+            ViperParams.PARAM_FET_COMPRESSOR_RATIO,
             "ratio",
             100,
             { it.fetCompressor.ratio },
@@ -315,7 +315,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val kneeAuto =
         bool(
-            ViperParams.kParamFetCompressorKneeAuto,
+            ViperParams.PARAM_FET_COMPRESSOR_KNEE_AUTO,
             "kneeAuto",
             true,
             { it.fetCompressor.kneeAuto },
@@ -323,7 +323,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val knee =
         int(
-            ViperParams.kParamFetCompressorKnee,
+            ViperParams.PARAM_FET_COMPRESSOR_KNEE,
             "knee",
             0,
             { it.fetCompressor.knee },
@@ -331,7 +331,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val kneeMulti =
         int(
-            ViperParams.kParamFetCompressorKneeMulti,
+            ViperParams.PARAM_FET_COMPRESSOR_KNEE_MULTI,
             "kneeMulti",
             0,
             { it.fetCompressor.kneeMulti },
@@ -339,7 +339,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val gainAuto =
         bool(
-            ViperParams.kParamFetCompressorGainAuto,
+            ViperParams.PARAM_FET_COMPRESSOR_GAIN_AUTO,
             "gainAuto",
             true,
             { it.fetCompressor.gainAuto },
@@ -347,7 +347,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val gain =
         int(
-            ViperParams.kParamFetCompressorGain,
+            ViperParams.PARAM_FET_COMPRESSOR_GAIN,
             "gain",
             0,
             { it.fetCompressor.gain },
@@ -355,7 +355,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val attackAuto =
         bool(
-            ViperParams.kParamFetCompressorAttackAuto,
+            ViperParams.PARAM_FET_COMPRESSOR_ATTACK_AUTO,
             "attackAuto",
             true,
             { it.fetCompressor.attackAuto },
@@ -363,7 +363,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val attack =
         int(
-            ViperParams.kParamFetCompressorAttack,
+            ViperParams.PARAM_FET_COMPRESSOR_ATTACK,
             "attack",
             20,
             { it.fetCompressor.attack },
@@ -371,7 +371,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val maxAttack =
         int(
-            ViperParams.kParamFetCompressorMaxAttack,
+            ViperParams.PARAM_FET_COMPRESSOR_MAX_ATTACK,
             "maxAttack",
             80,
             { it.fetCompressor.maxAttack },
@@ -379,7 +379,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val releaseAuto =
         bool(
-            ViperParams.kParamFetCompressorReleaseAuto,
+            ViperParams.PARAM_FET_COMPRESSOR_RELEASE_AUTO,
             "releaseAuto",
             true,
             { it.fetCompressor.releaseAuto },
@@ -387,7 +387,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val release =
         int(
-            ViperParams.kParamFetCompressorRelease,
+            ViperParams.PARAM_FET_COMPRESSOR_RELEASE,
             "release",
             50,
             { it.fetCompressor.release },
@@ -395,7 +395,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val maxRelease =
         int(
-            ViperParams.kParamFetCompressorMaxRelease,
+            ViperParams.PARAM_FET_COMPRESSOR_MAX_RELEASE,
             "maxRelease",
             100,
             { it.fetCompressor.maxRelease },
@@ -403,7 +403,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val crest =
         int(
-            ViperParams.kParamFetCompressorCrest,
+            ViperParams.PARAM_FET_COMPRESSOR_CREST,
             "crest",
             100,
             { it.fetCompressor.crest },
@@ -411,7 +411,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val adapt =
         int(
-            ViperParams.kParamFetCompressorAdapt,
+            ViperParams.PARAM_FET_COMPRESSOR_ADAPT,
             "adapt",
             50,
             { it.fetCompressor.adapt },
@@ -419,7 +419,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
         )
     val noClip =
         bool(
-            ViperParams.kParamFetCompressorNoClip,
+            ViperParams.PARAM_FET_COMPRESSOR_NO_CLIP,
             "noClip",
             true,
             { it.fetCompressor.noClip },
@@ -430,7 +430,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
 class MultibandCompressorEffect : EffectGroupBuilder("multibandCompressor") {
     val enable =
         bool(
-            ViperParams.kParamMultibandCompressorEnable,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_ENABLE,
             "enable",
             false,
             { it.multibandCompressor.enable },
@@ -567,7 +567,7 @@ class MultibandCompressorEffect : EffectGroupBuilder("multibandCompressor") {
 class DdcEffect : EffectGroupBuilder("ddc") {
     val enable =
         bool(
-            ViperParams.kParamDdcEnable,
+            ViperParams.PARAM_DDC_ENABLE,
             "enable",
             false,
             { it.ddc.enable },
@@ -586,7 +586,7 @@ class DdcEffect : EffectGroupBuilder("ddc") {
 class SpectrumExtensionEffect : EffectGroupBuilder("spectrumExtension") {
     val enable =
         bool(
-            ViperParams.kParamSpectrumExtensionEnable,
+            ViperParams.PARAM_SPECTRUM_EXTENSION_ENABLE,
             "enable",
             false,
             { it.spectrumExtension.enable },
@@ -594,7 +594,7 @@ class SpectrumExtensionEffect : EffectGroupBuilder("spectrumExtension") {
         )
     val strength =
         int(
-            ViperParams.kParamSpectrumExtensionStrength,
+            ViperParams.PARAM_SPECTRUM_EXTENSION_STRENGTH,
             "strength",
             7600,
             { it.spectrumExtension.strength },
@@ -602,7 +602,7 @@ class SpectrumExtensionEffect : EffectGroupBuilder("spectrumExtension") {
         )
     val exciter =
         int(
-            ViperParams.kParamSpectrumExtensionExciter,
+            ViperParams.PARAM_SPECTRUM_EXTENSION_EXCITER,
             "exciter",
             0,
             { it.spectrumExtension.exciter },
@@ -613,7 +613,7 @@ class SpectrumExtensionEffect : EffectGroupBuilder("spectrumExtension") {
 class EqualizerEffect : EffectGroupBuilder("equalizer") {
     val enable =
         bool(
-            ViperParams.kParamEqualizerEnable,
+            ViperParams.PARAM_EQUALIZER_ENABLE,
             "enable",
             false,
             { it.eq.enable },
@@ -621,7 +621,7 @@ class EqualizerEffect : EffectGroupBuilder("equalizer") {
         )
     val bandCount =
         int(
-            ViperParams.kParamEqualizerBandCount,
+            ViperParams.PARAM_EQUALIZER_BAND_COUNT,
             "bandCount",
             10,
             { it.eq.bandCount },
@@ -629,7 +629,7 @@ class EqualizerEffect : EffectGroupBuilder("equalizer") {
         )
     val bands =
         doubleList(
-            ViperParams.kParamEqualizerBandLevel,
+            ViperParams.PARAM_EQUALIZER_BAND_LEVEL,
             "bands",
             List(10) { 0.0 },
             { it.eq.bands },
@@ -646,7 +646,7 @@ class EqualizerEffect : EffectGroupBuilder("equalizer") {
 class DynamicEqEffect : EffectGroupBuilder("dynamicEq") {
     val enable =
         bool(
-            ViperParams.kParamDynamicEqEnable,
+            ViperParams.PARAM_DYNAMIC_EQ_ENABLE,
             "enable",
             false,
             { it.dynamicEq.enable },
@@ -714,7 +714,7 @@ class DynamicEqEffect : EffectGroupBuilder("dynamicEq") {
 class ConvolverEffect : EffectGroupBuilder("convolver") {
     val enable =
         bool(
-            ViperParams.kParamConvolverEnable,
+            ViperParams.PARAM_CONVOLVER_ENABLE,
             "enable",
             false,
             { it.convolver.enable },
@@ -730,7 +730,7 @@ class ConvolverEffect : EffectGroupBuilder("convolver") {
         )
     val crossChannel =
         int(
-            ViperParams.kParamConvolverCrossChannel,
+            ViperParams.PARAM_CONVOLVER_CROSS_CHANNEL,
             "crossChannel",
             0,
             { it.convolver.crossChannel },
@@ -741,7 +741,7 @@ class ConvolverEffect : EffectGroupBuilder("convolver") {
 class FieldSurroundEffect : EffectGroupBuilder("fieldSurround") {
     val enable =
         bool(
-            ViperParams.kParamFieldSurroundEnable,
+            ViperParams.PARAM_FIELD_SURROUND_ENABLE,
             "enable",
             false,
             { it.fieldSurround.enable },
@@ -749,7 +749,7 @@ class FieldSurroundEffect : EffectGroupBuilder("fieldSurround") {
         )
     val widening =
         int(
-            ViperParams.kParamFieldSurroundWidening,
+            ViperParams.PARAM_FIELD_SURROUND_WIDENING,
             "widening",
             0,
             { it.fieldSurround.widening },
@@ -757,7 +757,7 @@ class FieldSurroundEffect : EffectGroupBuilder("fieldSurround") {
         )
     val midImage =
         int(
-            ViperParams.kParamFieldSurroundMidImage,
+            ViperParams.PARAM_FIELD_SURROUND_MID_IMAGE,
             "midImage",
             5,
             { it.fieldSurround.midImage },
@@ -765,7 +765,7 @@ class FieldSurroundEffect : EffectGroupBuilder("fieldSurround") {
         )
     val depth =
         int(
-            ViperParams.kParamFieldSurroundDepth,
+            ViperParams.PARAM_FIELD_SURROUND_DEPTH,
             "depth",
             0,
             { it.fieldSurround.depth },
@@ -776,7 +776,7 @@ class FieldSurroundEffect : EffectGroupBuilder("fieldSurround") {
 class DiffSurroundEffect : EffectGroupBuilder("diffSurround") {
     val enable =
         bool(
-            ViperParams.kParamDiffSurroundEnable,
+            ViperParams.PARAM_DIFF_SURROUND_ENABLE,
             "enable",
             false,
             { it.diffSurround.enable },
@@ -784,7 +784,7 @@ class DiffSurroundEffect : EffectGroupBuilder("diffSurround") {
         )
     val delay =
         int(
-            ViperParams.kParamDiffSurroundDelay,
+            ViperParams.PARAM_DIFF_SURROUND_DELAY,
             "delay",
             5,
             { it.diffSurround.delay },
@@ -792,7 +792,7 @@ class DiffSurroundEffect : EffectGroupBuilder("diffSurround") {
         )
     val reverse =
         bool(
-            ViperParams.kParamDiffSurroundReverse,
+            ViperParams.PARAM_DIFF_SURROUND_REVERSE,
             "reverse",
             false,
             { it.diffSurround.reverse },
@@ -800,7 +800,7 @@ class DiffSurroundEffect : EffectGroupBuilder("diffSurround") {
         )
     val wetDryMix =
         int(
-            ViperParams.kParamDiffSurroundWetDryMix,
+            ViperParams.PARAM_DIFF_SURROUND_WET_DRY_MIX,
             "wetDryMix",
             100,
             { it.diffSurround.wetDryMix },
@@ -808,7 +808,7 @@ class DiffSurroundEffect : EffectGroupBuilder("diffSurround") {
         )
     val lpCutoff =
         int(
-            ViperParams.kParamDiffSurroundLpCutoff,
+            ViperParams.PARAM_DIFF_SURROUND_LP_CUTOFF,
             "lpCutoff",
             0,
             { it.diffSurround.lpCutoff },
@@ -819,7 +819,7 @@ class DiffSurroundEffect : EffectGroupBuilder("diffSurround") {
 class StereoImagerEffect : EffectGroupBuilder("stereoImager") {
     val enable =
         bool(
-            ViperParams.kParamStereoImagerEnable,
+            ViperParams.PARAM_STEREO_IMAGER_ENABLE,
             "enable",
             false,
             { it.stereoImager.enable },
@@ -827,7 +827,7 @@ class StereoImagerEffect : EffectGroupBuilder("stereoImager") {
         )
     val lowWidth =
         int(
-            ViperParams.kParamStereoImagerLowWidth,
+            ViperParams.PARAM_STEREO_IMAGER_LOW_WIDTH,
             "lowWidth",
             100,
             { it.stereoImager.lowWidth },
@@ -835,7 +835,7 @@ class StereoImagerEffect : EffectGroupBuilder("stereoImager") {
         )
     val midWidth =
         int(
-            ViperParams.kParamStereoImagerMidWidth,
+            ViperParams.PARAM_STEREO_IMAGER_MID_WIDTH,
             "midWidth",
             100,
             { it.stereoImager.midWidth },
@@ -843,7 +843,7 @@ class StereoImagerEffect : EffectGroupBuilder("stereoImager") {
         )
     val highWidth =
         int(
-            ViperParams.kParamStereoImagerHighWidth,
+            ViperParams.PARAM_STEREO_IMAGER_HIGH_WIDTH,
             "highWidth",
             100,
             { it.stereoImager.highWidth },
@@ -851,7 +851,7 @@ class StereoImagerEffect : EffectGroupBuilder("stereoImager") {
         )
     val lowCrossover =
         int(
-            ViperParams.kParamStereoImagerLowCrossover,
+            ViperParams.PARAM_STEREO_IMAGER_LOW_CROSSOVER,
             "lowCrossover",
             200,
             { it.stereoImager.lowCrossover },
@@ -859,7 +859,7 @@ class StereoImagerEffect : EffectGroupBuilder("stereoImager") {
         )
     val highCrossover =
         int(
-            ViperParams.kParamStereoImagerHighCrossover,
+            ViperParams.PARAM_STEREO_IMAGER_HIGH_CROSSOVER,
             "highCrossover",
             4000,
             { it.stereoImager.highCrossover },
@@ -870,7 +870,7 @@ class StereoImagerEffect : EffectGroupBuilder("stereoImager") {
 class HeadphoneSurroundEffect : EffectGroupBuilder("headphoneSurround") {
     val enable =
         bool(
-            ViperParams.kParamHeadphoneSurroundEnable,
+            ViperParams.PARAM_HEADPHONE_SURROUND_ENABLE,
             "enable",
             false,
             { it.headphoneSurround.enable },
@@ -878,7 +878,7 @@ class HeadphoneSurroundEffect : EffectGroupBuilder("headphoneSurround") {
         )
     val quality =
         int(
-            ViperParams.kParamHeadphoneSurroundQuality,
+            ViperParams.PARAM_HEADPHONE_SURROUND_QUALITY,
             "quality",
             0,
             { it.headphoneSurround.quality },
@@ -889,7 +889,7 @@ class HeadphoneSurroundEffect : EffectGroupBuilder("headphoneSurround") {
 class ReverbEffect : EffectGroupBuilder("reverb") {
     val enable =
         bool(
-            ViperParams.kParamReverbEnable,
+            ViperParams.PARAM_REVERB_ENABLE,
             "enable",
             false,
             { it.reverb.enable },
@@ -897,7 +897,7 @@ class ReverbEffect : EffectGroupBuilder("reverb") {
         )
     val roomSize =
         int(
-            ViperParams.kParamReverbRoomSize,
+            ViperParams.PARAM_REVERB_ROOM_SIZE,
             "roomSize",
             0,
             { it.reverb.roomSize },
@@ -905,7 +905,7 @@ class ReverbEffect : EffectGroupBuilder("reverb") {
         )
     val width =
         int(
-            ViperParams.kParamReverbWidth,
+            ViperParams.PARAM_REVERB_WIDTH,
             "width",
             0,
             { it.reverb.width },
@@ -913,7 +913,7 @@ class ReverbEffect : EffectGroupBuilder("reverb") {
         )
     val damp =
         int(
-            ViperParams.kParamReverbDamp,
+            ViperParams.PARAM_REVERB_DAMP,
             "damp",
             0,
             { it.reverb.damp },
@@ -921,7 +921,7 @@ class ReverbEffect : EffectGroupBuilder("reverb") {
         )
     val wet =
         int(
-            ViperParams.kParamReverbWet,
+            ViperParams.PARAM_REVERB_WET,
             "wet",
             0,
             { it.reverb.wet },
@@ -929,7 +929,7 @@ class ReverbEffect : EffectGroupBuilder("reverb") {
         )
     val dry =
         int(
-            ViperParams.kParamReverbDry,
+            ViperParams.PARAM_REVERB_DRY,
             "dry",
             100,
             { it.reverb.dry },
@@ -940,7 +940,7 @@ class ReverbEffect : EffectGroupBuilder("reverb") {
 class DynamicSystemEffect : EffectGroupBuilder("dynamicSystem") {
     val enable =
         bool(
-            ViperParams.kParamDynamicSystemEnable,
+            ViperParams.PARAM_DYNAMIC_SYSTEM_ENABLE,
             "enable",
             false,
             { it.dynamicSystem.enable },
@@ -1021,7 +1021,7 @@ class DynamicSystemEffect : EffectGroupBuilder("dynamicSystem") {
 class PsychoacousticBassEffect : EffectGroupBuilder("psychoacousticBass") {
     val enable =
         bool(
-            ViperParams.kParamPsychoacousticBassEnable,
+            ViperParams.PARAM_PSYCHOACOUSTIC_BASS_ENABLE,
             "enable",
             false,
             { it.psychoacousticBass.enable },
@@ -1029,7 +1029,7 @@ class PsychoacousticBassEffect : EffectGroupBuilder("psychoacousticBass") {
         )
     val cutoff =
         int(
-            ViperParams.kParamPsychoacousticBassCutoff,
+            ViperParams.PARAM_PSYCHOACOUSTIC_BASS_CUTOFF,
             "cutoff",
             80,
             { it.psychoacousticBass.cutoff },
@@ -1037,7 +1037,7 @@ class PsychoacousticBassEffect : EffectGroupBuilder("psychoacousticBass") {
         )
     val intensity =
         int(
-            ViperParams.kParamPsychoacousticBassIntensity,
+            ViperParams.PARAM_PSYCHOACOUSTIC_BASS_INTENSITY,
             "intensity",
             50,
             { it.psychoacousticBass.intensity },
@@ -1045,7 +1045,7 @@ class PsychoacousticBassEffect : EffectGroupBuilder("psychoacousticBass") {
         )
     val harmonicOrder =
         int(
-            ViperParams.kParamPsychoacousticBassHarmonicOrder,
+            ViperParams.PARAM_PSYCHOACOUSTIC_BASS_HARMONIC_ORDER,
             "harmonicOrder",
             3,
             { it.psychoacousticBass.harmonicOrder },
@@ -1053,7 +1053,7 @@ class PsychoacousticBassEffect : EffectGroupBuilder("psychoacousticBass") {
         )
     val originalLevel =
         int(
-            ViperParams.kParamPsychoacousticBassOriginalLevel,
+            ViperParams.PARAM_PSYCHOACOUSTIC_BASS_ORIGINAL_LEVEL,
             "originalLevel",
             100,
             { it.psychoacousticBass.originalLevel },
@@ -1064,7 +1064,7 @@ class PsychoacousticBassEffect : EffectGroupBuilder("psychoacousticBass") {
 class BassEffect : EffectGroupBuilder("bass") {
     val enable =
         bool(
-            ViperParams.kParamBassEnable,
+            ViperParams.PARAM_BASS_ENABLE,
             "enable",
             false,
             { it.bass.enable },
@@ -1072,7 +1072,7 @@ class BassEffect : EffectGroupBuilder("bass") {
         )
     val mode =
         int(
-            ViperParams.kParamBassMode,
+            ViperParams.PARAM_BASS_MODE,
             "mode",
             0,
             { it.bass.mode },
@@ -1080,7 +1080,7 @@ class BassEffect : EffectGroupBuilder("bass") {
         )
     val frequency =
         int(
-            ViperParams.kParamBassFrequency,
+            ViperParams.PARAM_BASS_FREQUENCY,
             "frequency",
             55,
             { it.bass.frequency },
@@ -1088,7 +1088,7 @@ class BassEffect : EffectGroupBuilder("bass") {
         )
     val gain =
         int(
-            ViperParams.kParamBassGain,
+            ViperParams.PARAM_BASS_GAIN,
             "gain",
             50,
             { it.bass.gain },
@@ -1096,7 +1096,7 @@ class BassEffect : EffectGroupBuilder("bass") {
         )
     val antiPop =
         bool(
-            ViperParams.kParamBassAntiPop,
+            ViperParams.PARAM_BASS_ANTI_POP,
             "antiPop",
             false,
             { it.bass.antiPop },
@@ -1107,7 +1107,7 @@ class BassEffect : EffectGroupBuilder("bass") {
 class BassMonoEffect : EffectGroupBuilder("bassMono") {
     val enable =
         bool(
-            ViperParams.kParamBassMonoEnable,
+            ViperParams.PARAM_BASS_MONO_ENABLE,
             "enable",
             false,
             { it.bassMono.enable },
@@ -1115,7 +1115,7 @@ class BassMonoEffect : EffectGroupBuilder("bassMono") {
         )
     val mode =
         int(
-            ViperParams.kParamBassMonoMode,
+            ViperParams.PARAM_BASS_MONO_MODE,
             "mode",
             0,
             { it.bassMono.mode },
@@ -1123,7 +1123,7 @@ class BassMonoEffect : EffectGroupBuilder("bassMono") {
         )
     val frequency =
         int(
-            ViperParams.kParamBassMonoFrequency,
+            ViperParams.PARAM_BASS_MONO_FREQUENCY,
             "frequency",
             55,
             { it.bassMono.frequency },
@@ -1131,7 +1131,7 @@ class BassMonoEffect : EffectGroupBuilder("bassMono") {
         )
     val gain =
         int(
-            ViperParams.kParamBassMonoGain,
+            ViperParams.PARAM_BASS_MONO_GAIN,
             "gain",
             50,
             { it.bassMono.gain },
@@ -1139,7 +1139,7 @@ class BassMonoEffect : EffectGroupBuilder("bassMono") {
         )
     val antiPop =
         bool(
-            ViperParams.kParamBassMonoAntiPop,
+            ViperParams.PARAM_BASS_MONO_ANTI_POP,
             "antiPop",
             false,
             { it.bassMono.antiPop },
@@ -1150,7 +1150,7 @@ class BassMonoEffect : EffectGroupBuilder("bassMono") {
 class ClarityEffect : EffectGroupBuilder("clarity") {
     val enable =
         bool(
-            ViperParams.kParamClarityEnable,
+            ViperParams.PARAM_CLARITY_ENABLE,
             "enable",
             false,
             { it.clarity.enable },
@@ -1158,7 +1158,7 @@ class ClarityEffect : EffectGroupBuilder("clarity") {
         )
     val mode =
         int(
-            ViperParams.kParamClarityMode,
+            ViperParams.PARAM_CLARITY_MODE,
             "mode",
             0,
             { it.clarity.mode },
@@ -1166,7 +1166,7 @@ class ClarityEffect : EffectGroupBuilder("clarity") {
         )
     val gain =
         int(
-            ViperParams.kParamClarityGain,
+            ViperParams.PARAM_CLARITY_GAIN,
             "gain",
             50,
             { it.clarity.gain },
@@ -1177,7 +1177,7 @@ class ClarityEffect : EffectGroupBuilder("clarity") {
 class CureEffect : EffectGroupBuilder("cure") {
     val enable =
         bool(
-            ViperParams.kParamCureEnable,
+            ViperParams.PARAM_CURE_ENABLE,
             "enable",
             false,
             { it.cure.enable },
@@ -1185,7 +1185,7 @@ class CureEffect : EffectGroupBuilder("cure") {
         )
     val crossfeedPreset =
         int(
-            ViperParams.kParamCureCrossfeedPreset,
+            ViperParams.PARAM_CURE_CROSSFEED_PRESET,
             "crossfeedPreset",
             0,
             { it.cure.crossfeedPreset },
@@ -1196,7 +1196,7 @@ class CureEffect : EffectGroupBuilder("cure") {
 class TubeSimulatorEffect : EffectGroupBuilder("tubeSimulator") {
     val enable =
         bool(
-            ViperParams.kParamTubeSimulatorEnable,
+            ViperParams.PARAM_TUBE_SIMULATOR_ENABLE,
             "enable",
             false,
             { it.tubeSimulator.enable },
@@ -1207,7 +1207,7 @@ class TubeSimulatorEffect : EffectGroupBuilder("tubeSimulator") {
 class AnalogXEffect : EffectGroupBuilder("analogX") {
     val enable =
         bool(
-            ViperParams.kParamAnalogXEnable,
+            ViperParams.PARAM_ANALOG_X_ENABLE,
             "enable",
             false,
             { it.analogX.enable },
@@ -1215,7 +1215,7 @@ class AnalogXEffect : EffectGroupBuilder("analogX") {
         )
     val mode =
         int(
-            ViperParams.kParamAnalogXMode,
+            ViperParams.PARAM_ANALOG_X_MODE,
             "mode",
             0,
             { it.analogX.mode },
@@ -1226,7 +1226,7 @@ class AnalogXEffect : EffectGroupBuilder("analogX") {
 class SpeakerCorrectionEffect : EffectGroupBuilder("speakerCorrection") {
     val enable =
         bool(
-            ViperParams.kParamSpeakerCorrectionEnable,
+            ViperParams.PARAM_SPEAKER_CORRECTION_ENABLE,
             "enable",
             false,
             { it.speakerCorrection.enable },

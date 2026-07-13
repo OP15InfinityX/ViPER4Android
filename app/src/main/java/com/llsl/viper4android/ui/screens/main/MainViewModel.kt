@@ -330,7 +330,7 @@ class MainViewModel
                     if (_aidlModeEnabled.value) {
                         viperService?.dispatchConvolverKernelPath("")
                     } else {
-                        viperService?.dispatchParam(ViperParams.kParamConvolverPrepareBuffer, 0, 0, 1)
+                        viperService?.dispatchParam(ViperParams.PARAM_CONVOLVER_PREPARE_BUFFER, 0, 0, 1)
                     }
                 }
                 return
@@ -377,7 +377,7 @@ class MainViewModel
             val channelCount = decoded.channels
             FileLogger.i("ViewModel", "Kernel decoded: $fileName samples=$totalFloats ch=$channelCount")
 
-            ifMasterOn { service.dispatchParam(ViperParams.kParamConvolverPrepareBuffer, totalFloats, channelCount, 0) }
+            ifMasterOn { service.dispatchParam(ViperParams.PARAM_CONVOLVER_PREPARE_BUFFER, totalFloats, channelCount, 0) }
 
             val rawBytes =
                 ByteBuffer
@@ -397,14 +397,14 @@ class MainViewModel
                 chunk.putInt(chunkIndex)
                 chunk.putInt(floatsInChunk)
                 chunk.put(rawBytes, offset * 4, floatsInChunk * 4)
-                ifMasterOn { service.dispatchParam(ViperParams.kParamConvolverSetBuffer, chunk.array()) }
+                ifMasterOn { service.dispatchParam(ViperParams.PARAM_CONVOLVER_SET_BUFFER, chunk.array()) }
                 offset += floatsInChunk
                 chunkIndex++
             }
 
             val kernelId = fileName.hashCode()
             ifMasterOn {
-                service.dispatchParam(ViperParams.kParamConvolverCommitBuffer, totalFloats, crc, kernelId)
+                service.dispatchParam(ViperParams.PARAM_CONVOLVER_COMMIT_BUFFER, totalFloats, crc, kernelId)
             }
             FileLogger.i("ViewModel", "Kernel streamed: $fileName chunks=$chunkIndex crc=0x${crc.toUInt().toString(16)}")
         }
@@ -573,14 +573,14 @@ class MainViewModel
                 val v = _uiState.value.dynamicSystem
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamDynamicSystemEnable, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_DYNAMIC_SYSTEM_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
                         ParamEntry(
-                            ViperParams.kParamDynamicSystemStrength,
+                            ViperParams.PARAM_DYNAMIC_SYSTEM_STRENGTH,
                             intArrayOf(EffectDispatcher.dynamicSystemStrengthToRaw(v.strength)),
                         ),
-                        ParamEntry(ViperParams.kParamDynamicSystemXCoefficients, intArrayOf(v.xLow, v.xHigh)),
-                        ParamEntry(ViperParams.kParamDynamicSystemYCoefficients, intArrayOf(v.yLow, v.yHigh)),
-                        ParamEntry(ViperParams.kParamDynamicSystemSideGain, intArrayOf(v.sideGainLow, v.sideGainHigh)),
+                        ParamEntry(ViperParams.PARAM_DYNAMIC_SYSTEM_X_COEFFICIENTS, intArrayOf(v.xLow, v.xHigh)),
+                        ParamEntry(ViperParams.PARAM_DYNAMIC_SYSTEM_Y_COEFFICIENTS, intArrayOf(v.yLow, v.yHigh)),
+                        ParamEntry(ViperParams.PARAM_DYNAMIC_SYSTEM_SIDE_GAIN, intArrayOf(v.sideGainLow, v.sideGainHigh)),
                     ),
                 )
             }
@@ -736,7 +736,7 @@ class MainViewModel
             Effects.multibandCompressor.bandEnables,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandEnable,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_ENABLE,
         )
 
         fun setMultibandCompressorCrossover(
@@ -746,7 +746,7 @@ class MainViewModel
             Effects.multibandCompressor.crossovers,
             band,
             value,
-            ViperParams.kParamMultibandCompressorCrossoverFrequency,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_CROSSOVER_FREQUENCY,
         )
 
         fun setMultibandCompressorBandThreshold(
@@ -756,7 +756,7 @@ class MainViewModel
             Effects.multibandCompressor.thresholds,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandThreshold,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_THRESHOLD,
         )
 
         fun setMultibandCompressorBandRatio(
@@ -766,7 +766,7 @@ class MainViewModel
             Effects.multibandCompressor.ratios,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandRatio,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_RATIO,
         )
 
         fun setMultibandCompressorBandGain(
@@ -776,7 +776,7 @@ class MainViewModel
             Effects.multibandCompressor.gains,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandGain,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_GAIN,
         )
 
         fun setMultibandCompressorBandKnee(
@@ -786,7 +786,7 @@ class MainViewModel
             Effects.multibandCompressor.knees,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandKnee,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_KNEE,
         )
 
         fun setMultibandCompressorBandKneeMulti(
@@ -796,7 +796,7 @@ class MainViewModel
             Effects.multibandCompressor.kneeMultis,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandKneeMulti,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_KNEE_MULTI,
         )
 
         fun setMultibandCompressorBandAttack(
@@ -806,7 +806,7 @@ class MainViewModel
             Effects.multibandCompressor.attacks,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandAttack,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_ATTACK,
         )
 
         fun setMultibandCompressorBandMaxAttack(
@@ -816,7 +816,7 @@ class MainViewModel
             Effects.multibandCompressor.maxAttacks,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandMaxAttack,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_MAX_ATTACK,
         )
 
         fun setMultibandCompressorBandRelease(
@@ -826,7 +826,7 @@ class MainViewModel
             Effects.multibandCompressor.releases,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandRelease,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_RELEASE,
         )
 
         fun setMultibandCompressorBandMaxRelease(
@@ -836,7 +836,7 @@ class MainViewModel
             Effects.multibandCompressor.maxReleases,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandMaxRelease,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_MAX_RELEASE,
         )
 
         fun setMultibandCompressorBandCrest(
@@ -846,7 +846,7 @@ class MainViewModel
             Effects.multibandCompressor.crests,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandCrest,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_CREST,
         )
 
         fun setMultibandCompressorBandAdapt(
@@ -856,7 +856,7 @@ class MainViewModel
             Effects.multibandCompressor.adapts,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandAdapt,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_ADAPT,
         )
 
         fun setMultibandCompressorBandAutoKnee(
@@ -866,7 +866,7 @@ class MainViewModel
             Effects.multibandCompressor.kneeAutos,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandKneeAuto,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_KNEE_AUTO,
         )
 
         fun setMultibandCompressorBandAutoGain(
@@ -876,7 +876,7 @@ class MainViewModel
             Effects.multibandCompressor.gainAutos,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandGainAuto,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_GAIN_AUTO,
         )
 
         fun setMultibandCompressorBandAutoAttack(
@@ -886,7 +886,7 @@ class MainViewModel
             Effects.multibandCompressor.attackAutos,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandAttackAuto,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_ATTACK_AUTO,
         )
 
         fun setMultibandCompressorBandAutoRelease(
@@ -896,7 +896,7 @@ class MainViewModel
             Effects.multibandCompressor.releaseAutos,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandReleaseAuto,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_RELEASE_AUTO,
         )
 
         fun setMultibandCompressorBandNoClip(
@@ -906,7 +906,7 @@ class MainViewModel
             Effects.multibandCompressor.noClips,
             band,
             value,
-            ViperParams.kParamMultibandCompressorBandNoClip,
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_NO_CLIP,
         )
 
         private fun dynamicEqBandUpdate(
@@ -925,37 +925,37 @@ class MainViewModel
         fun setDynamicEqBandFreq(
             band: Int,
             value: Int,
-        ) = dynamicEqBandUpdate(Effects.dynamicEq.freqs, band, value, ViperParams.kParamDynamicEqBandFrequency)
+        ) = dynamicEqBandUpdate(Effects.dynamicEq.freqs, band, value, ViperParams.PARAM_DYNAMIC_EQ_BAND_FREQUENCY)
 
         fun setDynamicEqBandQ(
             band: Int,
             value: Int,
-        ) = dynamicEqBandUpdate(Effects.dynamicEq.qs, band, value, ViperParams.kParamDynamicEqBandQ)
+        ) = dynamicEqBandUpdate(Effects.dynamicEq.qs, band, value, ViperParams.PARAM_DYNAMIC_EQ_BAND_Q)
 
         fun setDynamicEqBandGain(
             band: Int,
             value: Int,
-        ) = dynamicEqBandUpdate(Effects.dynamicEq.gains, band, value, ViperParams.kParamDynamicEqBandGain)
+        ) = dynamicEqBandUpdate(Effects.dynamicEq.gains, band, value, ViperParams.PARAM_DYNAMIC_EQ_BAND_GAIN)
 
         fun setDynamicEqBandThreshold(
             band: Int,
             value: Int,
-        ) = dynamicEqBandUpdate(Effects.dynamicEq.thresholds, band, value, ViperParams.kParamDynamicEqBandThreshold)
+        ) = dynamicEqBandUpdate(Effects.dynamicEq.thresholds, band, value, ViperParams.PARAM_DYNAMIC_EQ_BAND_THRESHOLD)
 
         fun setDynamicEqBandAttack(
             band: Int,
             value: Int,
-        ) = dynamicEqBandUpdate(Effects.dynamicEq.attacks, band, value, ViperParams.kParamDynamicEqBandAttack)
+        ) = dynamicEqBandUpdate(Effects.dynamicEq.attacks, band, value, ViperParams.PARAM_DYNAMIC_EQ_BAND_ATTACK)
 
         fun setDynamicEqBandRelease(
             band: Int,
             value: Int,
-        ) = dynamicEqBandUpdate(Effects.dynamicEq.releases, band, value, ViperParams.kParamDynamicEqBandRelease)
+        ) = dynamicEqBandUpdate(Effects.dynamicEq.releases, band, value, ViperParams.PARAM_DYNAMIC_EQ_BAND_RELEASE)
 
         fun setDynamicEqBandFilterType(
             band: Int,
             value: Int,
-        ) = dynamicEqBandUpdate(Effects.dynamicEq.filterTypes, band, value, ViperParams.kParamDynamicEqBandFilterType)
+        ) = dynamicEqBandUpdate(Effects.dynamicEq.filterTypes, band, value, ViperParams.PARAM_DYNAMIC_EQ_BAND_FILTER_TYPE)
 
         fun addDynamicEqBand() {
             val state = _uiState.value
@@ -976,7 +976,7 @@ class MainViewModel
             applyPref(Effects.dynamicEq.releases, cur.releases + 100)
             applyPref(Effects.dynamicEq.filterTypes, cur.filterTypes + 0)
             applyPref(Effects.dynamicEq.bandCount, newCount)
-            ifMasterOn { viperService?.dispatchParam(ViperParams.kParamDynamicEqBandCount, newCount) }
+            ifMasterOn { viperService?.dispatchParam(ViperParams.PARAM_DYNAMIC_EQ_BAND_COUNT, newCount) }
         }
 
         fun removeDynamicEqBand(index: Int) {
@@ -995,7 +995,7 @@ class MainViewModel
             applyPref(Effects.dynamicEq.attacks, cur.attacks.removeAt(index))
             applyPref(Effects.dynamicEq.releases, cur.releases.removeAt(index))
             applyPref(Effects.dynamicEq.filterTypes, cur.filterTypes.removeAt(index))
-            ifMasterOn { viperService?.dispatchParam(ViperParams.kParamDynamicEqBandCount, newCount) }
+            ifMasterOn { viperService?.dispatchParam(ViperParams.PARAM_DYNAMIC_EQ_BAND_COUNT, newCount) }
         }
 
         fun setPlaybackGainControlEnabled(enabled: Boolean) {
@@ -1004,10 +1004,10 @@ class MainViewModel
                 val v = _uiState.value.playbackGainControl
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamPlaybackGainControlEnable, intArrayOf(if (v.enable) 1 else 0)),
-                        ParamEntry(ViperParams.kParamPlaybackGainControlStrength, intArrayOf(v.strength)),
-                        ParamEntry(ViperParams.kParamPlaybackGainControlMaxGain, intArrayOf(v.maxGain)),
-                        ParamEntry(ViperParams.kParamPlaybackGainControlOutputThreshold, intArrayOf(v.outputThreshold)),
+                        ParamEntry(ViperParams.PARAM_PLAYBACK_GAIN_CONTROL_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_PLAYBACK_GAIN_CONTROL_STRENGTH, intArrayOf(v.strength)),
+                        ParamEntry(ViperParams.PARAM_PLAYBACK_GAIN_CONTROL_MAX_GAIN, intArrayOf(v.maxGain)),
+                        ParamEntry(ViperParams.PARAM_PLAYBACK_GAIN_CONTROL_OUTPUT_THRESHOLD, intArrayOf(v.outputThreshold)),
                     ),
                 )
             }
@@ -1019,10 +1019,10 @@ class MainViewModel
                 val v = _uiState.value.lufs
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamLufsEnable, intArrayOf(if (v.enable) 1 else 0)),
-                        ParamEntry(ViperParams.kParamLufsTarget, intArrayOf(v.target)),
-                        ParamEntry(ViperParams.kParamLufsMaxGain, intArrayOf(v.maxGain)),
-                        ParamEntry(ViperParams.kParamLufsSpeed, intArrayOf(v.speed)),
+                        ParamEntry(ViperParams.PARAM_LUFS_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_LUFS_TARGET, intArrayOf(v.target)),
+                        ParamEntry(ViperParams.PARAM_LUFS_MAX_GAIN, intArrayOf(v.maxGain)),
+                        ParamEntry(ViperParams.PARAM_LUFS_SPEED, intArrayOf(v.speed)),
                     ),
                 )
             }
@@ -1034,17 +1034,17 @@ class MainViewModel
                 val v = _uiState.value.fetCompressor
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamFetCompressorEnable, intArrayOf(if (v.enable) 100 else 0)),
+                        ParamEntry(ViperParams.PARAM_FET_COMPRESSOR_ENABLE, intArrayOf(if (v.enable) 100 else 0)),
                         ParamEntry(
-                            ViperParams.kParamFetCompressorThreshold,
+                            ViperParams.PARAM_FET_COMPRESSOR_THRESHOLD,
                             intArrayOf(EffectDispatcher.fetCompressorThresholdToRaw(v.threshold)),
                         ),
-                        ParamEntry(ViperParams.kParamFetCompressorRatio, intArrayOf(v.ratio)),
-                        ParamEntry(ViperParams.kParamFetCompressorKneeAuto, intArrayOf(if (v.kneeAuto) 100 else 0)),
-                        ParamEntry(ViperParams.kParamFetCompressorKnee, intArrayOf(EffectDispatcher.fetCompressorKneeToRaw(v.knee))),
-                        ParamEntry(ViperParams.kParamFetCompressorKneeMulti, intArrayOf(v.kneeMulti)),
-                        ParamEntry(ViperParams.kParamFetCompressorGainAuto, intArrayOf(if (v.gainAuto) 100 else 0)),
-                        ParamEntry(ViperParams.kParamFetCompressorGain, intArrayOf(EffectDispatcher.fetCompressorGainToRaw(v.gain))),
+                        ParamEntry(ViperParams.PARAM_FET_COMPRESSOR_RATIO, intArrayOf(v.ratio)),
+                        ParamEntry(ViperParams.PARAM_FET_COMPRESSOR_KNEE_AUTO, intArrayOf(if (v.kneeAuto) 100 else 0)),
+                        ParamEntry(ViperParams.PARAM_FET_COMPRESSOR_KNEE, intArrayOf(EffectDispatcher.fetCompressorKneeToRaw(v.knee))),
+                        ParamEntry(ViperParams.PARAM_FET_COMPRESSOR_KNEE_MULTI, intArrayOf(v.kneeMulti)),
+                        ParamEntry(ViperParams.PARAM_FET_COMPRESSOR_GAIN_AUTO, intArrayOf(if (v.gainAuto) 100 else 0)),
+                        ParamEntry(ViperParams.PARAM_FET_COMPRESSOR_GAIN, intArrayOf(EffectDispatcher.fetCompressorGainToRaw(v.gain))),
                     ),
                 )
             }
@@ -1055,7 +1055,7 @@ class MainViewModel
             ifMasterOn {
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamMultibandCompressorEnable, intArrayOf(if (enabled) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_MULTIBAND_COMPRESSOR_ENABLE, intArrayOf(if (enabled) 1 else 0)),
                     ),
                 )
             }
@@ -1079,10 +1079,10 @@ class MainViewModel
                 val v = _uiState.value.spectrumExtension
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamSpectrumExtensionEnable, intArrayOf(if (v.enable) 1 else 0)),
-                        ParamEntry(ViperParams.kParamSpectrumExtensionStrength, intArrayOf(v.strength)),
+                        ParamEntry(ViperParams.PARAM_SPECTRUM_EXTENSION_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_SPECTRUM_EXTENSION_STRENGTH, intArrayOf(v.strength)),
                         ParamEntry(
-                            ViperParams.kParamSpectrumExtensionExciter,
+                            ViperParams.PARAM_SPECTRUM_EXTENSION_EXCITER,
                             intArrayOf(EffectDispatcher.spectrumExtensionExciterToRaw(v.exciter)),
                         ),
                     ),
@@ -1096,7 +1096,7 @@ class MainViewModel
                 val v = _uiState.value.eq
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamEqualizerEnable, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_EQUALIZER_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
                     ),
                 )
                 viperService?.dispatchEqBands(v.bands)
@@ -1108,7 +1108,7 @@ class MainViewModel
             ifMasterOn {
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamDynamicEqEnable, intArrayOf(if (enabled) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_DYNAMIC_EQ_ENABLE, intArrayOf(if (enabled) 1 else 0)),
                     ),
                 )
             }
@@ -1132,16 +1132,16 @@ class MainViewModel
                 val v = _uiState.value.fieldSurround
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamFieldSurroundEnable, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_FIELD_SURROUND_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
                         ParamEntry(
-                            ViperParams.kParamFieldSurroundWidening,
+                            ViperParams.PARAM_FIELD_SURROUND_WIDENING,
                             intArrayOf(EffectDispatcher.fieldSurroundWideningToRaw(v.widening)),
                         ),
                         ParamEntry(
-                            ViperParams.kParamFieldSurroundMidImage,
+                            ViperParams.PARAM_FIELD_SURROUND_MID_IMAGE,
                             intArrayOf(EffectDispatcher.fieldSurroundMidImageToRaw(v.midImage)),
                         ),
-                        ParamEntry(ViperParams.kParamFieldSurroundDepth, intArrayOf(EffectDispatcher.fieldSurroundDepthToRaw(v.depth))),
+                        ParamEntry(ViperParams.PARAM_FIELD_SURROUND_DEPTH, intArrayOf(EffectDispatcher.fieldSurroundDepthToRaw(v.depth))),
                     ),
                 )
             }
@@ -1153,11 +1153,11 @@ class MainViewModel
                 val v = _uiState.value.diffSurround
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamDiffSurroundEnable, intArrayOf(if (v.enable) 1 else 0)),
-                        ParamEntry(ViperParams.kParamDiffSurroundDelay, intArrayOf(EffectDispatcher.diffSurroundDelayToRaw(v.delay))),
-                        ParamEntry(ViperParams.kParamDiffSurroundReverse, intArrayOf(if (v.reverse) 1 else 0)),
-                        ParamEntry(ViperParams.kParamDiffSurroundWetDryMix, intArrayOf(v.wetDryMix)),
-                        ParamEntry(ViperParams.kParamDiffSurroundLpCutoff, intArrayOf(v.lpCutoff)),
+                        ParamEntry(ViperParams.PARAM_DIFF_SURROUND_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_DIFF_SURROUND_DELAY, intArrayOf(EffectDispatcher.diffSurroundDelayToRaw(v.delay))),
+                        ParamEntry(ViperParams.PARAM_DIFF_SURROUND_REVERSE, intArrayOf(if (v.reverse) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_DIFF_SURROUND_WET_DRY_MIX, intArrayOf(v.wetDryMix)),
+                        ParamEntry(ViperParams.PARAM_DIFF_SURROUND_LP_CUTOFF, intArrayOf(v.lpCutoff)),
                     ),
                 )
             }
@@ -1169,12 +1169,12 @@ class MainViewModel
                 val v = _uiState.value.stereoImager
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamStereoImagerEnable, intArrayOf(if (v.enable) 1 else 0)),
-                        ParamEntry(ViperParams.kParamStereoImagerLowWidth, intArrayOf(v.lowWidth)),
-                        ParamEntry(ViperParams.kParamStereoImagerMidWidth, intArrayOf(v.midWidth)),
-                        ParamEntry(ViperParams.kParamStereoImagerHighWidth, intArrayOf(v.highWidth)),
-                        ParamEntry(ViperParams.kParamStereoImagerLowCrossover, intArrayOf(v.lowCrossover)),
-                        ParamEntry(ViperParams.kParamStereoImagerHighCrossover, intArrayOf(v.highCrossover)),
+                        ParamEntry(ViperParams.PARAM_STEREO_IMAGER_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_STEREO_IMAGER_LOW_WIDTH, intArrayOf(v.lowWidth)),
+                        ParamEntry(ViperParams.PARAM_STEREO_IMAGER_MID_WIDTH, intArrayOf(v.midWidth)),
+                        ParamEntry(ViperParams.PARAM_STEREO_IMAGER_HIGH_WIDTH, intArrayOf(v.highWidth)),
+                        ParamEntry(ViperParams.PARAM_STEREO_IMAGER_LOW_CROSSOVER, intArrayOf(v.lowCrossover)),
+                        ParamEntry(ViperParams.PARAM_STEREO_IMAGER_HIGH_CROSSOVER, intArrayOf(v.highCrossover)),
                     ),
                 )
             }
@@ -1186,8 +1186,8 @@ class MainViewModel
                 val v = _uiState.value.headphoneSurround
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamHeadphoneSurroundEnable, intArrayOf(if (v.enable) 1 else 0)),
-                        ParamEntry(ViperParams.kParamHeadphoneSurroundQuality, intArrayOf(v.quality)),
+                        ParamEntry(ViperParams.PARAM_HEADPHONE_SURROUND_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_HEADPHONE_SURROUND_QUALITY, intArrayOf(v.quality)),
                     ),
                 )
             }
@@ -1199,12 +1199,12 @@ class MainViewModel
                 val v = _uiState.value.reverb
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamReverbEnable, intArrayOf(if (v.enable) 1 else 0)),
-                        ParamEntry(ViperParams.kParamReverbRoomSize, intArrayOf(v.roomSize * 10)),
-                        ParamEntry(ViperParams.kParamReverbWidth, intArrayOf(v.width * 10)),
-                        ParamEntry(ViperParams.kParamReverbDamp, intArrayOf(v.damp)),
-                        ParamEntry(ViperParams.kParamReverbWet, intArrayOf(v.wet)),
-                        ParamEntry(ViperParams.kParamReverbDry, intArrayOf(v.dry)),
+                        ParamEntry(ViperParams.PARAM_REVERB_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_REVERB_ROOM_SIZE, intArrayOf(v.roomSize * 10)),
+                        ParamEntry(ViperParams.PARAM_REVERB_WIDTH, intArrayOf(v.width * 10)),
+                        ParamEntry(ViperParams.PARAM_REVERB_DAMP, intArrayOf(v.damp)),
+                        ParamEntry(ViperParams.PARAM_REVERB_WET, intArrayOf(v.wet)),
+                        ParamEntry(ViperParams.PARAM_REVERB_DRY, intArrayOf(v.dry)),
                     ),
                 )
             }
@@ -1220,7 +1220,7 @@ class MainViewModel
             ifMasterOn {
                 val v = _uiState.value.tubeSimulator
                 viperService?.dispatchParamsBatch(
-                    listOf(ParamEntry(ViperParams.kParamTubeSimulatorEnable, intArrayOf(if (v.enable) 1 else 0))),
+                    listOf(ParamEntry(ViperParams.PARAM_TUBE_SIMULATOR_ENABLE, intArrayOf(if (v.enable) 1 else 0))),
                 )
             }
         }
@@ -1231,11 +1231,11 @@ class MainViewModel
                 val v = _uiState.value.psychoacousticBass
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamPsychoacousticBassEnable, intArrayOf(if (v.enable) 1 else 0)),
-                        ParamEntry(ViperParams.kParamPsychoacousticBassCutoff, intArrayOf(v.cutoff)),
-                        ParamEntry(ViperParams.kParamPsychoacousticBassIntensity, intArrayOf(v.intensity)),
-                        ParamEntry(ViperParams.kParamPsychoacousticBassHarmonicOrder, intArrayOf(v.harmonicOrder)),
-                        ParamEntry(ViperParams.kParamPsychoacousticBassOriginalLevel, intArrayOf(v.originalLevel)),
+                        ParamEntry(ViperParams.PARAM_PSYCHOACOUSTIC_BASS_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_PSYCHOACOUSTIC_BASS_CUTOFF, intArrayOf(v.cutoff)),
+                        ParamEntry(ViperParams.PARAM_PSYCHOACOUSTIC_BASS_INTENSITY, intArrayOf(v.intensity)),
+                        ParamEntry(ViperParams.PARAM_PSYCHOACOUSTIC_BASS_HARMONIC_ORDER, intArrayOf(v.harmonicOrder)),
+                        ParamEntry(ViperParams.PARAM_PSYCHOACOUSTIC_BASS_ORIGINAL_LEVEL, intArrayOf(v.originalLevel)),
                     ),
                 )
             }
@@ -1247,11 +1247,11 @@ class MainViewModel
                 val v = _uiState.value.bass
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamBassEnable, intArrayOf(if (v.enable) 1 else 0)),
-                        ParamEntry(ViperParams.kParamBassMode, intArrayOf(v.mode)),
-                        ParamEntry(ViperParams.kParamBassFrequency, intArrayOf(EffectDispatcher.bassFrequencyToRaw(v.frequency))),
-                        ParamEntry(ViperParams.kParamBassGain, intArrayOf(v.gain)),
-                        ParamEntry(ViperParams.kParamBassAntiPop, intArrayOf(if (v.antiPop) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_BASS_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_BASS_MODE, intArrayOf(v.mode)),
+                        ParamEntry(ViperParams.PARAM_BASS_FREQUENCY, intArrayOf(EffectDispatcher.bassFrequencyToRaw(v.frequency))),
+                        ParamEntry(ViperParams.PARAM_BASS_GAIN, intArrayOf(v.gain)),
+                        ParamEntry(ViperParams.PARAM_BASS_ANTI_POP, intArrayOf(if (v.antiPop) 1 else 0)),
                     ),
                 )
             }
@@ -1263,11 +1263,11 @@ class MainViewModel
                 val v = _uiState.value.bassMono
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamBassMonoEnable, intArrayOf(if (v.enable) 1 else 0)),
-                        ParamEntry(ViperParams.kParamBassMonoMode, intArrayOf(v.mode)),
-                        ParamEntry(ViperParams.kParamBassMonoFrequency, intArrayOf(EffectDispatcher.bassFrequencyToRaw(v.frequency))),
-                        ParamEntry(ViperParams.kParamBassMonoGain, intArrayOf(v.gain)),
-                        ParamEntry(ViperParams.kParamBassMonoAntiPop, intArrayOf(if (v.antiPop) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_BASS_MONO_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_BASS_MONO_MODE, intArrayOf(v.mode)),
+                        ParamEntry(ViperParams.PARAM_BASS_MONO_FREQUENCY, intArrayOf(EffectDispatcher.bassFrequencyToRaw(v.frequency))),
+                        ParamEntry(ViperParams.PARAM_BASS_MONO_GAIN, intArrayOf(v.gain)),
+                        ParamEntry(ViperParams.PARAM_BASS_MONO_ANTI_POP, intArrayOf(if (v.antiPop) 1 else 0)),
                     ),
                 )
             }
@@ -1279,9 +1279,9 @@ class MainViewModel
                 val v = _uiState.value.clarity
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamClarityEnable, intArrayOf(if (v.enable) 1 else 0)),
-                        ParamEntry(ViperParams.kParamClarityMode, intArrayOf(v.mode)),
-                        ParamEntry(ViperParams.kParamClarityGain, intArrayOf(v.gain)),
+                        ParamEntry(ViperParams.PARAM_CLARITY_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_CLARITY_MODE, intArrayOf(v.mode)),
+                        ParamEntry(ViperParams.PARAM_CLARITY_GAIN, intArrayOf(v.gain)),
                     ),
                 )
             }
@@ -1293,8 +1293,8 @@ class MainViewModel
                 val v = _uiState.value.cure
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamCureEnable, intArrayOf(if (v.enable) 1 else 0)),
-                        ParamEntry(ViperParams.kParamCureCrossfeedPreset, intArrayOf(v.crossfeedPreset)),
+                        ParamEntry(ViperParams.PARAM_CURE_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_CURE_CROSSFEED_PRESET, intArrayOf(v.crossfeedPreset)),
                     ),
                 )
             }
@@ -1306,8 +1306,8 @@ class MainViewModel
                 val v = _uiState.value.analogX
                 viperService?.dispatchParamsBatch(
                     listOf(
-                        ParamEntry(ViperParams.kParamAnalogXEnable, intArrayOf(if (v.enable) 1 else 0)),
-                        ParamEntry(ViperParams.kParamAnalogXMode, intArrayOf(v.mode)),
+                        ParamEntry(ViperParams.PARAM_ANALOG_X_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
+                        ParamEntry(ViperParams.PARAM_ANALOG_X_MODE, intArrayOf(v.mode)),
                     ),
                 )
             }

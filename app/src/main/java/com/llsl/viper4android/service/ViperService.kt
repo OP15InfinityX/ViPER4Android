@@ -417,9 +417,9 @@ class ViperService : LifecycleService() {
             return
         }
         if (bandCount != 0) {
-            globalEffect?.setParameter(ViperParams.kParamEqualizerBandCount, bandCount)
+            globalEffect?.setParameter(ViperParams.PARAM_EQUALIZER_BAND_COUNT, bandCount)
             for (i in 0 until sessions.size) {
-                sessions.valueAt(i).setParameter(ViperParams.kParamEqualizerBandCount, bandCount)
+                sessions.valueAt(i).setParameter(ViperParams.PARAM_EQUALIZER_BAND_COUNT, bandCount)
             }
         }
         globalEffect?.let { EffectDispatcher.dispatchEqBands(it, bands) }
@@ -452,10 +452,10 @@ class ViperService : LifecycleService() {
         val buffer = ByteBuffer.allocate(256).order(ByteOrder.LITTLE_ENDIAN)
         buffer.putInt(pathBytes.size)
         if (pathBytes.isNotEmpty()) buffer.put(pathBytes)
-        globalEffect?.setParameter(ViperParams.kParamConvolverSetKernel, buffer.array())
+        globalEffect?.setParameter(ViperParams.PARAM_CONVOLVER_SET_KERNEL, buffer.array())
         for (i in 0 until sessions.size) {
             sessions.valueAt(i).setParameter(
-                ViperParams.kParamConvolverSetKernel,
+                ViperParams.PARAM_CONVOLVER_SET_KERNEL,
                 buffer.array(),
             )
         }
