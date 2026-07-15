@@ -24,7 +24,6 @@ import com.llsl.viper4android.effect.serializeEffectPrefs
 import com.llsl.viper4android.utils.FileLogger
 import com.llsl.viper4android.utils.RootShell
 import com.llsl.viper4android.viper.ConfigChannel
-import com.llsl.viper4android.viper.ParamEntry
 import com.llsl.viper4android.viper.ViperDispatcher
 import com.llsl.viper4android.viper.ViperEffect
 import com.llsl.viper4android.viper.ViperParams
@@ -334,9 +333,10 @@ class ViperService : LifecycleService() {
     fun dispatchParam(
         param: Int,
         value: Int,
+        republishAidl: Boolean = true,
     ) {
         if (useAidlTypeUuid) {
-            republishLastStateOnAidl()
+            if (republishAidl) republishLastStateOnAidl()
             return
         }
         globalEffect?.setParameter(param, value)
@@ -350,9 +350,10 @@ class ViperService : LifecycleService() {
         val1: Int,
         val2: Int,
         val3: Int,
+        republishAidl: Boolean = true,
     ) {
         if (useAidlTypeUuid) {
-            republishLastStateOnAidl()
+            if (republishAidl) republishLastStateOnAidl()
             return
         }
         globalEffect?.setParameter(param, val1, val2, val3)
@@ -364,9 +365,10 @@ class ViperService : LifecycleService() {
     fun dispatchParam(
         param: Int,
         value: ByteArray,
+        republishAidl: Boolean = true,
     ) {
         if (useAidlTypeUuid) {
-            republishLastStateOnAidl()
+            if (republishAidl) republishLastStateOnAidl()
             return
         }
         globalEffect?.setParameter(param, value)
@@ -375,44 +377,13 @@ class ViperService : LifecycleService() {
         }
     }
 
-    fun dispatchParamsBatch(entries: List<ParamEntry>) {
-        if (entries.isEmpty()) return
-        if (useAidlTypeUuid) {
-            republishLastStateOnAidl()
-            return
-        }
-        for (entry in entries) {
-            when (entry.values.size) {
-                1 -> {
-                    globalEffect?.setParameter(entry.paramId, entry.values[0])
-                    for (i in 0 until sessions.size) {
-                        sessions.valueAt(i).setParameter(entry.paramId, entry.values[0])
-                    }
-                }
-
-                2 -> {
-                    globalEffect?.setParameter(entry.paramId, entry.values[0], entry.values[1])
-                    for (i in 0 until sessions.size) {
-                        sessions.valueAt(i).setParameter(entry.paramId, entry.values[0], entry.values[1])
-                    }
-                }
-
-                3 -> {
-                    globalEffect?.setParameter(entry.paramId, entry.values[0], entry.values[1], entry.values[2])
-                    for (i in 0 until sessions.size) {
-                        sessions.valueAt(i).setParameter(entry.paramId, entry.values[0], entry.values[1], entry.values[2])
-                    }
-                }
-            }
-        }
-    }
-
     fun dispatchEqBands(
         bands: List<Double>,
         bandCount: Int = 0,
+        republishAidl: Boolean = true,
     ) {
         if (useAidlTypeUuid) {
-            republishLastStateOnAidl()
+            if (republishAidl) republishLastStateOnAidl()
             return
         }
         if (bandCount != 0) {

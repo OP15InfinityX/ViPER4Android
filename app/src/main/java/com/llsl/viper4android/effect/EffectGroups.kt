@@ -18,8 +18,9 @@ abstract class EffectGroupBuilder(
         default: Int,
         get: (EffectState) -> Int,
         set: EffectState.(Int) -> EffectState,
+        toRawFn: ((Int) -> Int)? = null,
     ): IntPref {
-        val pref = IntPref(effectKey, paramId, jsonKey, default, get, set)
+        val pref = IntPref(effectKey, paramId, jsonKey, default, get, set, toRawFn)
         prefList += pref
         return pref
     }
@@ -59,23 +60,26 @@ abstract class EffectGroupBuilder(
     }
 
     protected fun intList(
+        paramId: Int,
         jsonKey: String,
         default: List<Int>,
         get: (EffectState) -> List<Int>,
         set: EffectState.(List<Int>) -> EffectState,
+        elementToRaw: ((Int) -> Int)? = null,
     ): IntListPref {
-        val pref = IntListPref(effectKey, jsonKey, default, get, set)
+        val pref = IntListPref(effectKey, paramId, jsonKey, default, get, set, elementToRaw)
         prefList += pref
         return pref
     }
 
     protected fun boolList(
+        paramId: Int,
         jsonKey: String,
         default: List<Boolean>,
         get: (EffectState) -> List<Boolean>,
         set: EffectState.(List<Boolean>) -> EffectState,
     ): BoolListPref {
-        val pref = BoolListPref(effectKey, jsonKey, default, get, set)
+        val pref = BoolListPref(effectKey, paramId, jsonKey, default, get, set)
         prefList += pref
         return pref
     }
@@ -208,6 +212,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
             -18,
             { it.fetCompressor.threshold },
             { copy(fetCompressor = fetCompressor.copy(threshold = it)) },
+            toRawFn = { ParamRaw.fetCompressorThreshold(it) },
         )
     val ratio =
         int(
@@ -232,6 +237,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
             0,
             { it.fetCompressor.knee },
             { copy(fetCompressor = fetCompressor.copy(knee = it)) },
+            toRawFn = { ParamRaw.fetCompressorKnee(it) },
         )
     val kneeMulti =
         int(
@@ -256,6 +262,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
             0,
             { it.fetCompressor.gain },
             { copy(fetCompressor = fetCompressor.copy(gain = it)) },
+            toRawFn = { ParamRaw.fetCompressorGain(it) },
         )
     val attackAuto =
         bool(
@@ -272,6 +279,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
             20,
             { it.fetCompressor.attack },
             { copy(fetCompressor = fetCompressor.copy(attack = it)) },
+            toRawFn = { ParamRaw.fetCompressorAttackMs(it) },
         )
     val maxAttack =
         int(
@@ -280,6 +288,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
             80,
             { it.fetCompressor.maxAttack },
             { copy(fetCompressor = fetCompressor.copy(maxAttack = it)) },
+            toRawFn = { ParamRaw.fetCompressorAttackMs(it) },
         )
     val releaseAuto =
         bool(
@@ -296,6 +305,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
             50,
             { it.fetCompressor.release },
             { copy(fetCompressor = fetCompressor.copy(release = it)) },
+            toRawFn = { ParamRaw.fetCompressorReleaseMs(it) },
         )
     val maxRelease =
         int(
@@ -304,6 +314,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
             100,
             { it.fetCompressor.maxRelease },
             { copy(fetCompressor = fetCompressor.copy(maxRelease = it)) },
+            toRawFn = { ParamRaw.fetCompressorReleaseMs(it) },
         )
     val crest =
         int(
@@ -312,6 +323,7 @@ class FetCompressorEffect : EffectGroupBuilder("fetCompressor") {
             100,
             { it.fetCompressor.crest },
             { copy(fetCompressor = fetCompressor.copy(crest = it)) },
+            toRawFn = { ParamRaw.fetCompressorReleaseMs(it) },
         )
     val adapt =
         int(
@@ -342,6 +354,7 @@ class MultibandCompressorEffect : EffectGroupBuilder("multibandCompressor") {
         )
     val bandEnables =
         boolList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_ENABLE,
             "bandEnables",
             listOf(true, true, true, true, true),
             { it.multibandCompressor.bandEnables },
@@ -349,6 +362,7 @@ class MultibandCompressorEffect : EffectGroupBuilder("multibandCompressor") {
         )
     val crossovers =
         intList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_CROSSOVER_FREQUENCY,
             "crossovers",
             listOf(120, 500, 4000, 8000),
             { it.multibandCompressor.crossovers },
@@ -356,13 +370,16 @@ class MultibandCompressorEffect : EffectGroupBuilder("multibandCompressor") {
         )
     val thresholds =
         intList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_THRESHOLD,
             "thresholds",
             listOf(-18, -18, -18, -18, -18),
             { it.multibandCompressor.thresholds },
             { copy(multibandCompressor = multibandCompressor.copy(thresholds = it)) },
+            elementToRaw = { ParamRaw.fetCompressorThreshold(it) },
         )
     val ratios =
         intList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_RATIO,
             "ratios",
             listOf(50, 50, 50, 50, 50),
             { it.multibandCompressor.ratios },
@@ -370,20 +387,25 @@ class MultibandCompressorEffect : EffectGroupBuilder("multibandCompressor") {
         )
     val gains =
         intList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_GAIN,
             "gains",
             listOf(0, 0, 0, 0, 0),
             { it.multibandCompressor.gains },
             { copy(multibandCompressor = multibandCompressor.copy(gains = it)) },
+            elementToRaw = { ParamRaw.fetCompressorGain(it) },
         )
     val knees =
         intList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_KNEE,
             "knees",
             listOf(0, 0, 0, 0, 0),
             { it.multibandCompressor.knees },
             { copy(multibandCompressor = multibandCompressor.copy(knees = it)) },
+            elementToRaw = { ParamRaw.fetCompressorKnee(it) },
         )
     val kneeMultis =
         intList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_KNEE_MULTI,
             "kneeMultis",
             listOf(0, 0, 0, 0, 0),
             { it.multibandCompressor.kneeMultis },
@@ -391,41 +413,52 @@ class MultibandCompressorEffect : EffectGroupBuilder("multibandCompressor") {
         )
     val attacks =
         intList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_ATTACK,
             "attacks",
             listOf(1, 1, 1, 1, 1),
             { it.multibandCompressor.attacks },
             { copy(multibandCompressor = multibandCompressor.copy(attacks = it)) },
+            elementToRaw = { ParamRaw.fetCompressorAttackMs(it) },
         )
     val maxAttacks =
         intList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_MAX_ATTACK,
             "maxAttacks",
             listOf(44, 44, 44, 44, 44),
             { it.multibandCompressor.maxAttacks },
             { copy(multibandCompressor = multibandCompressor.copy(maxAttacks = it)) },
+            elementToRaw = { ParamRaw.fetCompressorAttackMs(it) },
         )
     val releases =
         intList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_RELEASE,
             "releases",
             listOf(100, 100, 100, 100, 100),
             { it.multibandCompressor.releases },
             { copy(multibandCompressor = multibandCompressor.copy(releases = it)) },
+            elementToRaw = { ParamRaw.fetCompressorReleaseMs(it) },
         )
     val maxReleases =
         intList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_MAX_RELEASE,
             "maxReleases",
             listOf(200, 200, 200, 200, 200),
             { it.multibandCompressor.maxReleases },
             { copy(multibandCompressor = multibandCompressor.copy(maxReleases = it)) },
+            elementToRaw = { ParamRaw.fetCompressorReleaseMs(it) },
         )
     val crests =
         intList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_CREST,
             "crests",
             listOf(100, 100, 100, 100, 100),
             { it.multibandCompressor.crests },
             { copy(multibandCompressor = multibandCompressor.copy(crests = it)) },
+            elementToRaw = { ParamRaw.fetCompressorReleaseMs(it) },
         )
     val adapts =
         intList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_ADAPT,
             "adapts",
             listOf(50, 50, 50, 50, 50),
             { it.multibandCompressor.adapts },
@@ -433,6 +466,7 @@ class MultibandCompressorEffect : EffectGroupBuilder("multibandCompressor") {
         )
     val kneeAutos =
         boolList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_KNEE_AUTO,
             "kneeAutos",
             listOf(true, true, true, true, true),
             { it.multibandCompressor.kneeAutos },
@@ -440,6 +474,7 @@ class MultibandCompressorEffect : EffectGroupBuilder("multibandCompressor") {
         )
     val gainAutos =
         boolList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_GAIN_AUTO,
             "gainAutos",
             listOf(true, true, true, true, true),
             { it.multibandCompressor.gainAutos },
@@ -447,6 +482,7 @@ class MultibandCompressorEffect : EffectGroupBuilder("multibandCompressor") {
         )
     val attackAutos =
         boolList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_ATTACK_AUTO,
             "attackAutos",
             listOf(true, true, true, true, true),
             { it.multibandCompressor.attackAutos },
@@ -454,6 +490,7 @@ class MultibandCompressorEffect : EffectGroupBuilder("multibandCompressor") {
         )
     val releaseAutos =
         boolList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_RELEASE_AUTO,
             "releaseAutos",
             listOf(true, true, true, true, true),
             { it.multibandCompressor.releaseAutos },
@@ -461,6 +498,7 @@ class MultibandCompressorEffect : EffectGroupBuilder("multibandCompressor") {
         )
     val noClips =
         boolList(
+            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_NO_CLIP,
             "noClips",
             listOf(true, true, true, true, true),
             { it.multibandCompressor.noClips },
@@ -511,6 +549,7 @@ class SpectrumExtensionEffect : EffectGroupBuilder("spectrumExtension") {
             0,
             { it.spectrumExtension.exciter },
             { copy(spectrumExtension = spectrumExtension.copy(exciter = it)) },
+            toRawFn = { ParamRaw.spectrumExtensionExciter(it) },
         )
 }
 
@@ -558,7 +597,7 @@ class DynamicEqEffect : EffectGroupBuilder("dynamicEq") {
         )
     val bandCount =
         int(
-            -1,
+            ViperParams.PARAM_DYNAMIC_EQ_BAND_COUNT,
             "bandCount",
             3,
             { it.dynamicEq.bandCount },
@@ -566,6 +605,7 @@ class DynamicEqEffect : EffectGroupBuilder("dynamicEq") {
         )
     val freqs =
         intList(
+            ViperParams.PARAM_DYNAMIC_EQ_BAND_FREQUENCY,
             "freqs",
             listOf(60, 150, 400, 1000, 2500, 5000, 8000, 12000),
             { it.dynamicEq.freqs },
@@ -573,6 +613,7 @@ class DynamicEqEffect : EffectGroupBuilder("dynamicEq") {
         )
     val qs =
         intList(
+            ViperParams.PARAM_DYNAMIC_EQ_BAND_Q,
             "qs",
             listOf(100, 100, 150, 150, 150, 200, 200, 200),
             { it.dynamicEq.qs },
@@ -580,6 +621,7 @@ class DynamicEqEffect : EffectGroupBuilder("dynamicEq") {
         )
     val gains =
         intList(
+            ViperParams.PARAM_DYNAMIC_EQ_BAND_GAIN,
             "gains",
             listOf(0, 0, 0, 0, 0, 0, 0, 0),
             { it.dynamicEq.gains },
@@ -587,6 +629,7 @@ class DynamicEqEffect : EffectGroupBuilder("dynamicEq") {
         )
     val thresholds =
         intList(
+            ViperParams.PARAM_DYNAMIC_EQ_BAND_THRESHOLD,
             "thresholds",
             listOf(-300, -300, -250, -250, -200, -200, -200, -200),
             { it.dynamicEq.thresholds },
@@ -594,6 +637,7 @@ class DynamicEqEffect : EffectGroupBuilder("dynamicEq") {
         )
     val attacks =
         intList(
+            ViperParams.PARAM_DYNAMIC_EQ_BAND_ATTACK,
             "attacks",
             listOf(10, 10, 10, 10, 10, 10, 10, 10),
             { it.dynamicEq.attacks },
@@ -601,6 +645,7 @@ class DynamicEqEffect : EffectGroupBuilder("dynamicEq") {
         )
     val releases =
         intList(
+            ViperParams.PARAM_DYNAMIC_EQ_BAND_RELEASE,
             "releases",
             listOf(100, 100, 100, 100, 100, 100, 100, 100),
             { it.dynamicEq.releases },
@@ -608,6 +653,7 @@ class DynamicEqEffect : EffectGroupBuilder("dynamicEq") {
         )
     val filterTypes =
         intList(
+            ViperParams.PARAM_DYNAMIC_EQ_BAND_FILTER_TYPE,
             "filterTypes",
             listOf(0, 0, 0, 0, 0, 0, 0, 0),
             { it.dynamicEq.filterTypes },
@@ -658,6 +704,7 @@ class FieldSurroundEffect : EffectGroupBuilder("fieldSurround") {
             0,
             { it.fieldSurround.widening },
             { copy(fieldSurround = fieldSurround.copy(widening = it)) },
+            toRawFn = { ParamRaw.fieldSurroundWidening(it) },
         )
     val midImage =
         int(
@@ -666,6 +713,7 @@ class FieldSurroundEffect : EffectGroupBuilder("fieldSurround") {
             5,
             { it.fieldSurround.midImage },
             { copy(fieldSurround = fieldSurround.copy(midImage = it)) },
+            toRawFn = { ParamRaw.fieldSurroundMidImage(it) },
         )
     val depth =
         int(
@@ -674,6 +722,7 @@ class FieldSurroundEffect : EffectGroupBuilder("fieldSurround") {
             0,
             { it.fieldSurround.depth },
             { copy(fieldSurround = fieldSurround.copy(depth = it)) },
+            toRawFn = { ParamRaw.fieldSurroundDepth(it) },
         )
 }
 
@@ -693,6 +742,7 @@ class DiffSurroundEffect : EffectGroupBuilder("diffSurround") {
             5,
             { it.diffSurround.delay },
             { copy(diffSurround = diffSurround.copy(delay = it)) },
+            toRawFn = { ParamRaw.diffSurroundDelay(it) },
         )
     val reverse =
         bool(
@@ -806,6 +856,7 @@ class ReverbEffect : EffectGroupBuilder("reverb") {
             0,
             { it.reverb.roomSize },
             { copy(reverb = reverb.copy(roomSize = it)) },
+            toRawFn = { ParamRaw.reverbRoomSize(it) },
         )
     val width =
         int(
@@ -814,6 +865,7 @@ class ReverbEffect : EffectGroupBuilder("reverb") {
             0,
             { it.reverb.width },
             { copy(reverb = reverb.copy(width = it)) },
+            toRawFn = { ParamRaw.reverbWidth(it) },
         )
     val damp =
         int(
@@ -822,6 +874,7 @@ class ReverbEffect : EffectGroupBuilder("reverb") {
             0,
             { it.reverb.damp },
             { copy(reverb = reverb.copy(damp = it)) },
+            toRawFn = { ParamRaw.reverbDamp(it) },
         )
     val wet =
         int(
@@ -866,15 +919,16 @@ class DynamicSystemEffect : EffectGroupBuilder("dynamicSystem") {
         )
     val strength =
         int(
-            -1,
+            ViperParams.PARAM_DYNAMIC_SYSTEM_STRENGTH,
             "strength",
             50,
             { it.dynamicSystem.strength },
             { copy(dynamicSystem = dynamicSystem.copy(strength = it)) },
+            toRawFn = { ParamRaw.dynamicSystemStrength(it) },
         )
     val xLow =
         int(
-            -1,
+            ViperParams.PARAM_DYNAMIC_SYSTEM_X_LOW,
             "xLow",
             100,
             { it.dynamicSystem.xLow },
@@ -882,7 +936,7 @@ class DynamicSystemEffect : EffectGroupBuilder("dynamicSystem") {
         )
     val xHigh =
         int(
-            -1,
+            ViperParams.PARAM_DYNAMIC_SYSTEM_X_HIGH,
             "xHigh",
             5600,
             { it.dynamicSystem.xHigh },
@@ -890,7 +944,7 @@ class DynamicSystemEffect : EffectGroupBuilder("dynamicSystem") {
         )
     val yLow =
         int(
-            -1,
+            ViperParams.PARAM_DYNAMIC_SYSTEM_Y_LOW,
             "yLow",
             40,
             { it.dynamicSystem.yLow },
@@ -898,7 +952,7 @@ class DynamicSystemEffect : EffectGroupBuilder("dynamicSystem") {
         )
     val yHigh =
         int(
-            -1,
+            ViperParams.PARAM_DYNAMIC_SYSTEM_Y_HIGH,
             "yHigh",
             80,
             { it.dynamicSystem.yHigh },
@@ -906,7 +960,7 @@ class DynamicSystemEffect : EffectGroupBuilder("dynamicSystem") {
         )
     val sideGainLow =
         int(
-            -1,
+            ViperParams.PARAM_DYNAMIC_SYSTEM_SIDE_GAIN_LOW,
             "sideGainLow",
             50,
             { it.dynamicSystem.sideGainLow },
@@ -914,7 +968,7 @@ class DynamicSystemEffect : EffectGroupBuilder("dynamicSystem") {
         )
     val sideGainHigh =
         int(
-            -1,
+            ViperParams.PARAM_DYNAMIC_SYSTEM_SIDE_GAIN_HIGH,
             "sideGainHigh",
             50,
             { it.dynamicSystem.sideGainHigh },
@@ -989,6 +1043,7 @@ class BassEffect : EffectGroupBuilder("bass") {
             55,
             { it.bass.frequency },
             { copy(bass = bass.copy(frequency = it)) },
+            toRawFn = { ParamRaw.bassFrequency(it) },
         )
     val gain =
         int(
@@ -1032,6 +1087,7 @@ class BassMonoEffect : EffectGroupBuilder("bassMono") {
             55,
             { it.bassMono.frequency },
             { copy(bassMono = bassMono.copy(frequency = it)) },
+            toRawFn = { ParamRaw.bassFrequency(it) },
         )
     val gain =
         int(

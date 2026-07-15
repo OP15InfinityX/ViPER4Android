@@ -31,6 +31,7 @@ import com.llsl.viper4android.effect.EffectState
 import com.llsl.viper4android.effect.Effects
 import com.llsl.viper4android.effect.IntListPref
 import com.llsl.viper4android.effect.IntPref
+import com.llsl.viper4android.effect.ListPref
 import com.llsl.viper4android.effect.NullableLongPref
 import com.llsl.viper4android.effect.StringPref
 import com.llsl.viper4android.effect.deserializeEffectPrefs
@@ -42,8 +43,6 @@ import com.llsl.viper4android.utils.FileLogger
 import com.llsl.viper4android.utils.RootShell
 import com.llsl.viper4android.utils.WavDecoder
 import com.llsl.viper4android.viper.ConfigChannel
-import com.llsl.viper4android.viper.ParamEntry
-import com.llsl.viper4android.viper.ViperDispatcher
 import com.llsl.viper4android.viper.ViperEffect
 import com.llsl.viper4android.viper.ViperParams
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -189,13 +188,47 @@ class MainViewModel
         fun <T> applyPref(
             pref: EffectPref<T>,
             value: T,
+            last: Boolean = true,
         ) {
             _uiState.update { pref.set(it, value) }
             viewModelScope.launch {
                 persistPref(pref, value)
-                if (pref.paramId != -1 && _uiState.value.masterEnable && shouldDispatch(pref)) {
-                    viperService?.dispatchParam(pref.paramId, pref.toRaw(value))
+                if (pref.paramId != -1 &&
+                    pref !is IntListPref &&
+                    pref !is BoolListPref &&
+                    pref !is DoubleListPref &&
+                    _uiState.value.masterEnable &&
+                    shouldDispatch(pref)
+                ) {
+                    viperService?.dispatchParam(pref.paramId, pref.toRaw(value), republishAidl = last)
                 }
+            }
+        }
+
+        private fun <E> replaceAt(
+            list: List<E>,
+            index: Int,
+            value: E,
+            pad: E,
+            count: Int = 5,
+        ): List<E> {
+            val mutable = list.toMutableList()
+            while (mutable.size <= index) mutable.add(pad)
+            mutable[index] = value
+            return if (mutable.size > count) mutable.take(count) else mutable.toList()
+        }
+
+        fun <E> applyBandPref(
+            pref: ListPref<E>,
+            band: Int,
+            value: E,
+            count: Int = 5,
+            last: Boolean = true,
+        ) {
+            val updated = replaceAt(pref.get(_uiState.value), band, value, pref.padValue, count)
+            applyPref(pref, updated)
+            ifMasterOn {
+                viperService?.dispatchParam(pref.paramId, band, pref.elementToRaw(value), 0, republishAidl = last)
             }
         }
 
@@ -465,7 +498,7 @@ class MainViewModel
                         .split(";")
                         .filter { it.isNotBlank() }
                         .mapNotNull { it.toDoubleOrNull() }
-                applyPref(Effects.equalizer.presetId, presetId)
+                applyPref(Effects.equalizer.presetId, presetId, last = false)
                 applyPref(Effects.equalizer.bands, bands)
                 _uiState.update { state ->
                     val updatedMap =
@@ -474,12 +507,14 @@ class MainViewModel
                             .apply { put(state.eq.bandCount, bands) }
                     state.copy(eq = state.eq.copy(bandsMap = updatedMap))
                 }
-                if (_uiState.value.eq.enable) ifMasterOn { viperService?.dispatchEqBands(bands) }
+                if (_uiState.value.eq.enable) {
+                    ifMasterOn { viperService?.dispatchEqBands(bands) }
+                }
             }
         }
 
         fun setEqBands(bands: List<Double>) {
-            applyPref(Effects.equalizer.presetId, null)
+            applyPref(Effects.equalizer.presetId, null, last = false)
             applyPref(Effects.equalizer.bands, bands)
             _uiState.update { state ->
                 val updatedMap =
@@ -488,7 +523,9 @@ class MainViewModel
                         .apply { put(state.eq.bandCount, bands) }
                 state.copy(eq = state.eq.copy(bandsMap = updatedMap))
             }
-            if (_uiState.value.eq.enable) ifMasterOn { viperService?.dispatchEqBands(bands) }
+            if (_uiState.value.eq.enable) {
+                ifMasterOn { viperService?.dispatchEqBands(bands) }
+            }
         }
 
         fun setEqBandCount(count: Int) {
@@ -561,78 +598,51 @@ class MainViewModel
             applyPref(Effects.equalizer.presetId, null)
         }
 
-        private fun dispatchDynamicSystem() {
-            if (!_uiState.value.dynamicSystem.enable) return
-            ifMasterOn {
-                val v = _uiState.value.dynamicSystem
-                viperService?.dispatchParamsBatch(
-                    listOf(
-                        ParamEntry(ViperParams.PARAM_DYNAMIC_SYSTEM_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                        ParamEntry(
-                            ViperParams.PARAM_DYNAMIC_SYSTEM_STRENGTH,
-                            intArrayOf(ViperDispatcher.dynamicSystemStrengthToRaw(v.strength)),
-                        ),
-                        ParamEntry(ViperParams.PARAM_DYNAMIC_SYSTEM_X_COEFFICIENTS, intArrayOf(v.xLow, v.xHigh)),
-                        ParamEntry(ViperParams.PARAM_DYNAMIC_SYSTEM_Y_COEFFICIENTS, intArrayOf(v.yLow, v.yHigh)),
-                        ParamEntry(ViperParams.PARAM_DYNAMIC_SYSTEM_SIDE_GAIN, intArrayOf(v.sideGainLow, v.sideGainHigh)),
-                    ),
-                )
-            }
-        }
-
         fun setDynamicSystemXLow(value: Int) {
-            applyPref(Effects.dynamicSystem.presetId, null)
+            applyPref(Effects.dynamicSystem.presetId, null, last = false)
             applyPref(Effects.dynamicSystem.xLow, value)
-            dispatchDynamicSystem()
         }
 
         fun setDynamicSystemXHigh(value: Int) {
-            applyPref(Effects.dynamicSystem.presetId, null)
+            applyPref(Effects.dynamicSystem.presetId, null, last = false)
             applyPref(Effects.dynamicSystem.xHigh, value)
-            dispatchDynamicSystem()
         }
 
         fun setDynamicSystemYLow(value: Int) {
-            applyPref(Effects.dynamicSystem.presetId, null)
+            applyPref(Effects.dynamicSystem.presetId, null, last = false)
             applyPref(Effects.dynamicSystem.yLow, value)
-            dispatchDynamicSystem()
         }
 
         fun setDynamicSystemYHigh(value: Int) {
-            applyPref(Effects.dynamicSystem.presetId, null)
+            applyPref(Effects.dynamicSystem.presetId, null, last = false)
             applyPref(Effects.dynamicSystem.yHigh, value)
-            dispatchDynamicSystem()
         }
 
         fun setDynamicSystemSideGainLow(value: Int) {
-            applyPref(Effects.dynamicSystem.presetId, null)
+            applyPref(Effects.dynamicSystem.presetId, null, last = false)
             applyPref(Effects.dynamicSystem.sideGainLow, value)
-            dispatchDynamicSystem()
         }
 
         fun setDynamicSystemSideGainHigh(value: Int) {
-            applyPref(Effects.dynamicSystem.presetId, null)
+            applyPref(Effects.dynamicSystem.presetId, null, last = false)
             applyPref(Effects.dynamicSystem.sideGainHigh, value)
-            dispatchDynamicSystem()
         }
 
         fun setDynamicSystemStrength(value: Int) {
-            applyPref(Effects.dynamicSystem.presetId, null)
+            applyPref(Effects.dynamicSystem.presetId, null, last = false)
             applyPref(Effects.dynamicSystem.strength, value)
-            dispatchDynamicSystem()
         }
 
         fun setDynamicSystemPreset(presetId: Long) {
             viewModelScope.launch {
                 val preset = repository.getDsPresetById(presetId) ?: return@launch
-                applyPref(Effects.dynamicSystem.presetId, presetId)
-                applyPref(Effects.dynamicSystem.xLow, preset.xLow)
-                applyPref(Effects.dynamicSystem.xHigh, preset.xHigh)
-                applyPref(Effects.dynamicSystem.yLow, preset.yLow)
-                applyPref(Effects.dynamicSystem.yHigh, preset.yHigh)
-                applyPref(Effects.dynamicSystem.sideGainLow, preset.sideGainLow)
+                applyPref(Effects.dynamicSystem.presetId, presetId, last = false)
+                applyPref(Effects.dynamicSystem.xLow, preset.xLow, last = false)
+                applyPref(Effects.dynamicSystem.xHigh, preset.xHigh, last = false)
+                applyPref(Effects.dynamicSystem.yLow, preset.yLow, last = false)
+                applyPref(Effects.dynamicSystem.yHigh, preset.yHigh, last = false)
+                applyPref(Effects.dynamicSystem.sideGainLow, preset.sideGainLow, last = false)
                 applyPref(Effects.dynamicSystem.sideGainHigh, preset.sideGainHigh)
-                dispatchDynamicSystem()
             }
         }
 
@@ -665,291 +675,14 @@ class MainViewModel
         }
 
         fun resetDynamicSystemCoefficients() {
-            applyPref(Effects.dynamicSystem.xLow, Effects.dynamicSystem.xLow.defaultValue)
-            applyPref(Effects.dynamicSystem.xHigh, Effects.dynamicSystem.xHigh.defaultValue)
-            applyPref(Effects.dynamicSystem.yLow, Effects.dynamicSystem.yLow.defaultValue)
-            applyPref(Effects.dynamicSystem.yHigh, Effects.dynamicSystem.yHigh.defaultValue)
-            applyPref(Effects.dynamicSystem.sideGainLow, Effects.dynamicSystem.sideGainLow.defaultValue)
+            applyPref(Effects.dynamicSystem.presetId, null, last = false)
+            applyPref(Effects.dynamicSystem.xLow, Effects.dynamicSystem.xLow.defaultValue, last = false)
+            applyPref(Effects.dynamicSystem.xHigh, Effects.dynamicSystem.xHigh.defaultValue, last = false)
+            applyPref(Effects.dynamicSystem.yLow, Effects.dynamicSystem.yLow.defaultValue, last = false)
+            applyPref(Effects.dynamicSystem.yHigh, Effects.dynamicSystem.yHigh.defaultValue, last = false)
+            applyPref(Effects.dynamicSystem.sideGainLow, Effects.dynamicSystem.sideGainLow.defaultValue, last = false)
             applyPref(Effects.dynamicSystem.sideGainHigh, Effects.dynamicSystem.sideGainHigh.defaultValue)
-            applyPref(Effects.dynamicSystem.presetId, null)
-            dispatchDynamicSystem()
         }
-
-        private fun replaceAt(
-            list: List<Int>,
-            index: Int,
-            value: Int,
-            count: Int = 5,
-        ): List<Int> {
-            val mutable = list.toMutableList()
-            while (mutable.size <= index) mutable.add(0)
-            mutable[index] = value
-            return if (mutable.size > count) mutable.take(count) else mutable.toList()
-        }
-
-        private fun replaceAt(
-            list: List<Boolean>,
-            index: Int,
-            value: Boolean,
-            count: Int = 5,
-        ): List<Boolean> {
-            val mutable = list.toMutableList()
-            while (mutable.size <= index) mutable.add(true)
-            mutable[index] = value
-            return if (mutable.size > count) mutable.take(count) else mutable.toList()
-        }
-
-        private fun multibandCompressorBandUpdate(
-            pref: IntListPref,
-            band: Int,
-            value: Int,
-            paramId: Int,
-        ) {
-            val cur = pref.get(_uiState.value)
-            val updated = replaceAt(cur, band, value)
-            applyPref(pref, updated)
-            ifMasterOn { viperService?.dispatchParam(paramId, band, value, 0) }
-        }
-
-        private fun multibandCompressorBandUpdateBool(
-            pref: BoolListPref,
-            band: Int,
-            value: Boolean,
-            paramId: Int,
-        ) {
-            val cur = pref.get(_uiState.value)
-            val updated = replaceAt(cur, band, value)
-            applyPref(pref, updated)
-            ifMasterOn { viperService?.dispatchParam(paramId, band, if (value) 1 else 0, 0) }
-        }
-
-        fun setMultibandCompressorBandEnable(
-            band: Int,
-            value: Boolean,
-        ) = multibandCompressorBandUpdateBool(
-            Effects.multibandCompressor.bandEnables,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_ENABLE,
-        )
-
-        fun setMultibandCompressorCrossover(
-            band: Int,
-            value: Int,
-        ) = multibandCompressorBandUpdate(
-            Effects.multibandCompressor.crossovers,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_CROSSOVER_FREQUENCY,
-        )
-
-        fun setMultibandCompressorBandThreshold(
-            band: Int,
-            value: Int,
-        ) = multibandCompressorBandUpdate(
-            Effects.multibandCompressor.thresholds,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_THRESHOLD,
-        )
-
-        fun setMultibandCompressorBandRatio(
-            band: Int,
-            value: Int,
-        ) = multibandCompressorBandUpdate(
-            Effects.multibandCompressor.ratios,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_RATIO,
-        )
-
-        fun setMultibandCompressorBandGain(
-            band: Int,
-            value: Int,
-        ) = multibandCompressorBandUpdate(
-            Effects.multibandCompressor.gains,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_GAIN,
-        )
-
-        fun setMultibandCompressorBandKnee(
-            band: Int,
-            value: Int,
-        ) = multibandCompressorBandUpdate(
-            Effects.multibandCompressor.knees,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_KNEE,
-        )
-
-        fun setMultibandCompressorBandKneeMulti(
-            band: Int,
-            value: Int,
-        ) = multibandCompressorBandUpdate(
-            Effects.multibandCompressor.kneeMultis,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_KNEE_MULTI,
-        )
-
-        fun setMultibandCompressorBandAttack(
-            band: Int,
-            value: Int,
-        ) = multibandCompressorBandUpdate(
-            Effects.multibandCompressor.attacks,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_ATTACK,
-        )
-
-        fun setMultibandCompressorBandMaxAttack(
-            band: Int,
-            value: Int,
-        ) = multibandCompressorBandUpdate(
-            Effects.multibandCompressor.maxAttacks,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_MAX_ATTACK,
-        )
-
-        fun setMultibandCompressorBandRelease(
-            band: Int,
-            value: Int,
-        ) = multibandCompressorBandUpdate(
-            Effects.multibandCompressor.releases,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_RELEASE,
-        )
-
-        fun setMultibandCompressorBandMaxRelease(
-            band: Int,
-            value: Int,
-        ) = multibandCompressorBandUpdate(
-            Effects.multibandCompressor.maxReleases,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_MAX_RELEASE,
-        )
-
-        fun setMultibandCompressorBandCrest(
-            band: Int,
-            value: Int,
-        ) = multibandCompressorBandUpdate(
-            Effects.multibandCompressor.crests,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_CREST,
-        )
-
-        fun setMultibandCompressorBandAdapt(
-            band: Int,
-            value: Int,
-        ) = multibandCompressorBandUpdate(
-            Effects.multibandCompressor.adapts,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_ADAPT,
-        )
-
-        fun setMultibandCompressorBandAutoKnee(
-            band: Int,
-            value: Boolean,
-        ) = multibandCompressorBandUpdateBool(
-            Effects.multibandCompressor.kneeAutos,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_KNEE_AUTO,
-        )
-
-        fun setMultibandCompressorBandAutoGain(
-            band: Int,
-            value: Boolean,
-        ) = multibandCompressorBandUpdateBool(
-            Effects.multibandCompressor.gainAutos,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_GAIN_AUTO,
-        )
-
-        fun setMultibandCompressorBandAutoAttack(
-            band: Int,
-            value: Boolean,
-        ) = multibandCompressorBandUpdateBool(
-            Effects.multibandCompressor.attackAutos,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_ATTACK_AUTO,
-        )
-
-        fun setMultibandCompressorBandAutoRelease(
-            band: Int,
-            value: Boolean,
-        ) = multibandCompressorBandUpdateBool(
-            Effects.multibandCompressor.releaseAutos,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_RELEASE_AUTO,
-        )
-
-        fun setMultibandCompressorBandNoClip(
-            band: Int,
-            value: Boolean,
-        ) = multibandCompressorBandUpdateBool(
-            Effects.multibandCompressor.noClips,
-            band,
-            value,
-            ViperParams.PARAM_MULTIBAND_COMPRESSOR_BAND_NO_CLIP,
-        )
-
-        private fun dynamicEqBandUpdate(
-            pref: IntListPref,
-            band: Int,
-            value: Int,
-            paramId: Int,
-        ) {
-            val cur = pref.get(_uiState.value)
-            val count = _uiState.value.dynamicEq.bandCount
-            val updated = replaceAt(cur, band, value, count)
-            applyPref(pref, updated)
-            ifMasterOn { viperService?.dispatchParam(paramId, band, value, 0) }
-        }
-
-        fun setDynamicEqBandFreq(
-            band: Int,
-            value: Int,
-        ) = dynamicEqBandUpdate(Effects.dynamicEq.freqs, band, value, ViperParams.PARAM_DYNAMIC_EQ_BAND_FREQUENCY)
-
-        fun setDynamicEqBandQ(
-            band: Int,
-            value: Int,
-        ) = dynamicEqBandUpdate(Effects.dynamicEq.qs, band, value, ViperParams.PARAM_DYNAMIC_EQ_BAND_Q)
-
-        fun setDynamicEqBandGain(
-            band: Int,
-            value: Int,
-        ) = dynamicEqBandUpdate(Effects.dynamicEq.gains, band, value, ViperParams.PARAM_DYNAMIC_EQ_BAND_GAIN)
-
-        fun setDynamicEqBandThreshold(
-            band: Int,
-            value: Int,
-        ) = dynamicEqBandUpdate(Effects.dynamicEq.thresholds, band, value, ViperParams.PARAM_DYNAMIC_EQ_BAND_THRESHOLD)
-
-        fun setDynamicEqBandAttack(
-            band: Int,
-            value: Int,
-        ) = dynamicEqBandUpdate(Effects.dynamicEq.attacks, band, value, ViperParams.PARAM_DYNAMIC_EQ_BAND_ATTACK)
-
-        fun setDynamicEqBandRelease(
-            band: Int,
-            value: Int,
-        ) = dynamicEqBandUpdate(Effects.dynamicEq.releases, band, value, ViperParams.PARAM_DYNAMIC_EQ_BAND_RELEASE)
-
-        fun setDynamicEqBandFilterType(
-            band: Int,
-            value: Int,
-        ) = dynamicEqBandUpdate(Effects.dynamicEq.filterTypes, band, value, ViperParams.PARAM_DYNAMIC_EQ_BAND_FILTER_TYPE)
 
         fun addDynamicEqBand() {
             val state = _uiState.value
@@ -970,7 +703,6 @@ class MainViewModel
             applyPref(Effects.dynamicEq.releases, cur.releases + 100)
             applyPref(Effects.dynamicEq.filterTypes, cur.filterTypes + 0)
             applyPref(Effects.dynamicEq.bandCount, newCount)
-            ifMasterOn { viperService?.dispatchParam(ViperParams.PARAM_DYNAMIC_EQ_BAND_COUNT, newCount) }
         }
 
         fun removeDynamicEqBand(index: Int) {
@@ -989,76 +721,86 @@ class MainViewModel
             applyPref(Effects.dynamicEq.attacks, cur.attacks.removeAt(index))
             applyPref(Effects.dynamicEq.releases, cur.releases.removeAt(index))
             applyPref(Effects.dynamicEq.filterTypes, cur.filterTypes.removeAt(index))
-            ifMasterOn { viperService?.dispatchParam(ViperParams.PARAM_DYNAMIC_EQ_BAND_COUNT, newCount) }
         }
 
         fun setPlaybackGainControlEnabled(enabled: Boolean) {
-            applyPref(Effects.playbackGainControl.enable, enabled)
+            applyPref(Effects.playbackGainControl.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.playbackGainControl
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_PLAYBACK_GAIN_CONTROL_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                            ParamEntry(ViperParams.PARAM_PLAYBACK_GAIN_CONTROL_STRENGTH, intArrayOf(v.strength)),
-                            ParamEntry(ViperParams.PARAM_PLAYBACK_GAIN_CONTROL_MAX_GAIN, intArrayOf(v.maxGain)),
-                            ParamEntry(ViperParams.PARAM_PLAYBACK_GAIN_CONTROL_OUTPUT_THRESHOLD, intArrayOf(v.outputThreshold)),
-                        ),
-                    )
-                }
+                val v = _uiState.value.playbackGainControl
+                applyPref(Effects.playbackGainControl.strength, v.strength, last = false)
+                applyPref(Effects.playbackGainControl.maxGain, v.maxGain, last = false)
+                applyPref(Effects.playbackGainControl.outputThreshold, v.outputThreshold)
             }
         }
 
         fun setLufsEnabled(enabled: Boolean) {
-            applyPref(Effects.lufs.enable, enabled)
+            applyPref(Effects.lufs.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.lufs
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_LUFS_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                            ParamEntry(ViperParams.PARAM_LUFS_TARGET, intArrayOf(v.target)),
-                            ParamEntry(ViperParams.PARAM_LUFS_MAX_GAIN, intArrayOf(v.maxGain)),
-                            ParamEntry(ViperParams.PARAM_LUFS_SPEED, intArrayOf(v.speed)),
-                        ),
-                    )
-                }
+                val v = _uiState.value.lufs
+                applyPref(Effects.lufs.target, v.target, last = false)
+                applyPref(Effects.lufs.maxGain, v.maxGain, last = false)
+                applyPref(Effects.lufs.speed, v.speed)
             }
         }
 
         fun setFetCompressorEnabled(enabled: Boolean) {
-            applyPref(Effects.fetCompressor.enable, enabled)
+            applyPref(Effects.fetCompressor.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.fetCompressor
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_FET_COMPRESSOR_ENABLE, intArrayOf(if (v.enable) 100 else 0)),
-                            ParamEntry(
-                                ViperParams.PARAM_FET_COMPRESSOR_THRESHOLD,
-                                intArrayOf(ViperDispatcher.fetCompressorThresholdToRaw(v.threshold)),
-                            ),
-                            ParamEntry(ViperParams.PARAM_FET_COMPRESSOR_RATIO, intArrayOf(v.ratio)),
-                            ParamEntry(ViperParams.PARAM_FET_COMPRESSOR_KNEE_AUTO, intArrayOf(if (v.kneeAuto) 100 else 0)),
-                            ParamEntry(ViperParams.PARAM_FET_COMPRESSOR_KNEE, intArrayOf(ViperDispatcher.fetCompressorKneeToRaw(v.knee))),
-                            ParamEntry(ViperParams.PARAM_FET_COMPRESSOR_KNEE_MULTI, intArrayOf(v.kneeMulti)),
-                            ParamEntry(ViperParams.PARAM_FET_COMPRESSOR_GAIN_AUTO, intArrayOf(if (v.gainAuto) 100 else 0)),
-                            ParamEntry(ViperParams.PARAM_FET_COMPRESSOR_GAIN, intArrayOf(ViperDispatcher.fetCompressorGainToRaw(v.gain))),
-                        ),
-                    )
-                }
+                val v = _uiState.value.fetCompressor
+                applyPref(Effects.fetCompressor.threshold, v.threshold, last = false)
+                applyPref(Effects.fetCompressor.ratio, v.ratio, last = false)
+                applyPref(Effects.fetCompressor.kneeAuto, v.kneeAuto, last = false)
+                applyPref(Effects.fetCompressor.knee, v.knee, last = false)
+                applyPref(Effects.fetCompressor.kneeMulti, v.kneeMulti, last = false)
+                applyPref(Effects.fetCompressor.gainAuto, v.gainAuto, last = false)
+                applyPref(Effects.fetCompressor.gain, v.gain)
             }
         }
 
         fun setMultibandCompressorEnabled(enabled: Boolean) {
-            applyPref(Effects.multibandCompressor.enable, enabled)
+            applyPref(Effects.multibandCompressor.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_MULTIBAND_COMPRESSOR_ENABLE, intArrayOf(1)),
-                        ),
+                val mbc = Effects.multibandCompressor
+                val intPrefs =
+                    listOf(
+                        mbc.crossovers,
+                        mbc.thresholds,
+                        mbc.ratios,
+                        mbc.gains,
+                        mbc.knees,
+                        mbc.kneeMultis,
+                        mbc.attacks,
+                        mbc.maxAttacks,
+                        mbc.releases,
+                        mbc.maxReleases,
+                        mbc.crests,
+                        mbc.adapts,
                     )
+                val boolPrefs =
+                    listOf(
+                        mbc.bandEnables,
+                        mbc.kneeAutos,
+                        mbc.gainAutos,
+                        mbc.attackAutos,
+                        mbc.releaseAutos,
+                        mbc.noClips,
+                    )
+                val count = 5
+                val total = (intPrefs.size + boolPrefs.size) * count
+                var i = 0
+                for (pref in intPrefs) {
+                    val values = pref.get(_uiState.value)
+                    for (band in 0 until count) {
+                        i++
+                        applyBandPref(pref, band, values.getOrElse(band) { 0 }, count, last = i == total)
+                    }
+                }
+                for (pref in boolPrefs) {
+                    val values = pref.get(_uiState.value)
+                    for (band in 0 until count) {
+                        i++
+                        applyBandPref(pref, band, values.getOrElse(band) { false }, count, last = i == total)
+                    }
                 }
             }
         }
@@ -1076,48 +818,44 @@ class MainViewModel
         }
 
         fun setSpectrumExtensionEnabled(enabled: Boolean) {
-            applyPref(Effects.spectrumExtension.enable, enabled)
+            applyPref(Effects.spectrumExtension.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.spectrumExtension
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_SPECTRUM_EXTENSION_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                            ParamEntry(ViperParams.PARAM_SPECTRUM_EXTENSION_STRENGTH, intArrayOf(v.strength)),
-                            ParamEntry(
-                                ViperParams.PARAM_SPECTRUM_EXTENSION_EXCITER,
-                                intArrayOf(ViperDispatcher.spectrumExtensionExciterToRaw(v.exciter)),
-                            ),
-                        ),
-                    )
-                }
+                val v = _uiState.value.spectrumExtension
+                applyPref(Effects.spectrumExtension.strength, v.strength, last = false)
+                applyPref(Effects.spectrumExtension.exciter, v.exciter)
             }
         }
 
         fun setEqEnabled(enabled: Boolean) {
             applyPref(Effects.equalizer.enable, enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.eq
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_EQUALIZER_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                        ),
-                    )
-                    viperService?.dispatchEqBands(v.bands)
-                }
+                ifMasterOn { viperService?.dispatchEqBands(_uiState.value.eq.bands, republishAidl = false) }
             }
         }
 
         fun setDynamicEqEnabled(enabled: Boolean) {
-            applyPref(Effects.dynamicEq.enable, enabled)
+            applyPref(Effects.dynamicEq.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_DYNAMIC_EQ_ENABLE, intArrayOf(1)),
-                        ),
+                val count = _uiState.value.dynamicEq.bandCount
+                applyPref(Effects.dynamicEq.bandCount, count, last = false)
+                val bandPrefs =
+                    listOf(
+                        Effects.dynamicEq.freqs,
+                        Effects.dynamicEq.qs,
+                        Effects.dynamicEq.gains,
+                        Effects.dynamicEq.thresholds,
+                        Effects.dynamicEq.attacks,
+                        Effects.dynamicEq.releases,
+                        Effects.dynamicEq.filterTypes,
                     )
+                val total = bandPrefs.size * count
+                var i = 0
+                for (pref in bandPrefs) {
+                    val values = pref.get(_uiState.value)
+                    for (band in 0 until count) {
+                        i++
+                        applyBandPref(pref, band, values[band], count, last = i == total)
+                    }
                 }
             }
         }
@@ -1135,216 +873,131 @@ class MainViewModel
         }
 
         fun setFieldSurroundEnabled(enabled: Boolean) {
-            applyPref(Effects.fieldSurround.enable, enabled)
+            applyPref(Effects.fieldSurround.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.fieldSurround
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_FIELD_SURROUND_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                            ParamEntry(
-                                ViperParams.PARAM_FIELD_SURROUND_WIDENING,
-                                intArrayOf(ViperDispatcher.fieldSurroundWideningToRaw(v.widening)),
-                            ),
-                            ParamEntry(
-                                ViperParams.PARAM_FIELD_SURROUND_MID_IMAGE,
-                                intArrayOf(ViperDispatcher.fieldSurroundMidImageToRaw(v.midImage)),
-                            ),
-                            ParamEntry(
-                                ViperParams.PARAM_FIELD_SURROUND_DEPTH,
-                                intArrayOf(ViperDispatcher.fieldSurroundDepthToRaw(v.depth)),
-                            ),
-                        ),
-                    )
-                }
+                val v = _uiState.value.fieldSurround
+                applyPref(Effects.fieldSurround.widening, v.widening, last = false)
+                applyPref(Effects.fieldSurround.midImage, v.midImage, last = false)
+                applyPref(Effects.fieldSurround.depth, v.depth)
             }
         }
 
         fun setDiffSurroundEnabled(enabled: Boolean) {
-            applyPref(Effects.diffSurround.enable, enabled)
+            applyPref(Effects.diffSurround.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.diffSurround
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_DIFF_SURROUND_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                            ParamEntry(ViperParams.PARAM_DIFF_SURROUND_DELAY, intArrayOf(ViperDispatcher.diffSurroundDelayToRaw(v.delay))),
-                            ParamEntry(ViperParams.PARAM_DIFF_SURROUND_REVERSE, intArrayOf(if (v.reverse) 1 else 0)),
-                            ParamEntry(ViperParams.PARAM_DIFF_SURROUND_WET_DRY_MIX, intArrayOf(v.wetDryMix)),
-                            ParamEntry(ViperParams.PARAM_DIFF_SURROUND_LP_CUTOFF, intArrayOf(v.lpCutoff)),
-                        ),
-                    )
-                }
+                val v = _uiState.value.diffSurround
+                applyPref(Effects.diffSurround.delay, v.delay, last = false)
+                applyPref(Effects.diffSurround.reverse, v.reverse, last = false)
+                applyPref(Effects.diffSurround.wetDryMix, v.wetDryMix, last = false)
+                applyPref(Effects.diffSurround.lpCutoff, v.lpCutoff)
             }
         }
 
         fun setStereoImagerEnabled(enabled: Boolean) {
-            applyPref(Effects.stereoImager.enable, enabled)
+            applyPref(Effects.stereoImager.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.stereoImager
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_STEREO_IMAGER_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                            ParamEntry(ViperParams.PARAM_STEREO_IMAGER_LOW_WIDTH, intArrayOf(v.lowWidth)),
-                            ParamEntry(ViperParams.PARAM_STEREO_IMAGER_MID_WIDTH, intArrayOf(v.midWidth)),
-                            ParamEntry(ViperParams.PARAM_STEREO_IMAGER_HIGH_WIDTH, intArrayOf(v.highWidth)),
-                            ParamEntry(ViperParams.PARAM_STEREO_IMAGER_LOW_CROSSOVER, intArrayOf(v.lowCrossover)),
-                            ParamEntry(ViperParams.PARAM_STEREO_IMAGER_HIGH_CROSSOVER, intArrayOf(v.highCrossover)),
-                        ),
-                    )
-                }
+                val v = _uiState.value.stereoImager
+                applyPref(Effects.stereoImager.lowWidth, v.lowWidth, last = false)
+                applyPref(Effects.stereoImager.midWidth, v.midWidth, last = false)
+                applyPref(Effects.stereoImager.highWidth, v.highWidth, last = false)
+                applyPref(Effects.stereoImager.lowCrossover, v.lowCrossover, last = false)
+                applyPref(Effects.stereoImager.highCrossover, v.highCrossover)
             }
         }
 
         fun setHeadphoneSurroundEnabled(enabled: Boolean) {
-            applyPref(Effects.headphoneSurround.enable, enabled)
+            applyPref(Effects.headphoneSurround.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.headphoneSurround
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_HEADPHONE_SURROUND_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                            ParamEntry(ViperParams.PARAM_HEADPHONE_SURROUND_QUALITY, intArrayOf(v.quality)),
-                        ),
-                    )
-                }
+                val v = _uiState.value.headphoneSurround
+                applyPref(Effects.headphoneSurround.quality, v.quality)
             }
         }
 
         fun setReverbEnabled(enabled: Boolean) {
-            applyPref(Effects.reverb.enable, enabled)
+            applyPref(Effects.reverb.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.reverb
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_REVERB_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                            ParamEntry(ViperParams.PARAM_REVERB_ROOM_SIZE, intArrayOf(v.roomSize * 10)),
-                            ParamEntry(ViperParams.PARAM_REVERB_WIDTH, intArrayOf(v.width * 10)),
-                            ParamEntry(ViperParams.PARAM_REVERB_DAMP, intArrayOf(v.damp)),
-                            ParamEntry(ViperParams.PARAM_REVERB_WET, intArrayOf(v.wet)),
-                            ParamEntry(ViperParams.PARAM_REVERB_DRY, intArrayOf(v.dry)),
-                        ),
-                    )
-                }
+                val v = _uiState.value.reverb
+                applyPref(Effects.reverb.roomSize, v.roomSize, last = false)
+                applyPref(Effects.reverb.width, v.width, last = false)
+                applyPref(Effects.reverb.damp, v.damp, last = false)
+                applyPref(Effects.reverb.wet, v.wet, last = false)
+                applyPref(Effects.reverb.dry, v.dry)
             }
         }
 
         fun setDynamicSystemEnabled(enabled: Boolean) {
-            applyPref(Effects.dynamicSystem.enable, enabled)
-            dispatchDynamicSystem()
+            applyPref(Effects.dynamicSystem.enable, enabled, last = !enabled)
+            if (enabled) {
+                val v = _uiState.value.dynamicSystem
+                applyPref(Effects.dynamicSystem.strength, v.strength, last = false)
+                applyPref(Effects.dynamicSystem.xLow, v.xLow, last = false)
+                applyPref(Effects.dynamicSystem.xHigh, v.xHigh, last = false)
+                applyPref(Effects.dynamicSystem.yLow, v.yLow, last = false)
+                applyPref(Effects.dynamicSystem.yHigh, v.yHigh, last = false)
+                applyPref(Effects.dynamicSystem.sideGainLow, v.sideGainLow, last = false)
+                applyPref(Effects.dynamicSystem.sideGainHigh, v.sideGainHigh)
+            }
         }
 
         fun setTubeSimulatorEnabled(enabled: Boolean) {
             applyPref(Effects.tubeSimulator.enable, enabled)
-            if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.tubeSimulator
-                    viperService?.dispatchParamsBatch(
-                        listOf(ParamEntry(ViperParams.PARAM_TUBE_SIMULATOR_ENABLE, intArrayOf(if (v.enable) 1 else 0))),
-                    )
-                }
-            }
         }
 
         fun setPsychoacousticBassEnabled(enabled: Boolean) {
-            applyPref(Effects.psychoacousticBass.enable, enabled)
+            applyPref(Effects.psychoacousticBass.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.psychoacousticBass
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_PSYCHOACOUSTIC_BASS_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                            ParamEntry(ViperParams.PARAM_PSYCHOACOUSTIC_BASS_CUTOFF, intArrayOf(v.cutoff)),
-                            ParamEntry(ViperParams.PARAM_PSYCHOACOUSTIC_BASS_INTENSITY, intArrayOf(v.intensity)),
-                            ParamEntry(ViperParams.PARAM_PSYCHOACOUSTIC_BASS_HARMONIC_ORDER, intArrayOf(v.harmonicOrder)),
-                            ParamEntry(ViperParams.PARAM_PSYCHOACOUSTIC_BASS_ORIGINAL_LEVEL, intArrayOf(v.originalLevel)),
-                        ),
-                    )
-                }
+                val v = _uiState.value.psychoacousticBass
+                applyPref(Effects.psychoacousticBass.cutoff, v.cutoff, last = false)
+                applyPref(Effects.psychoacousticBass.intensity, v.intensity, last = false)
+                applyPref(Effects.psychoacousticBass.harmonicOrder, v.harmonicOrder, last = false)
+                applyPref(Effects.psychoacousticBass.originalLevel, v.originalLevel)
             }
         }
 
         fun setBassEnabled(enabled: Boolean) {
-            applyPref(Effects.bass.enable, enabled)
+            applyPref(Effects.bass.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.bass
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_BASS_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                            ParamEntry(ViperParams.PARAM_BASS_MODE, intArrayOf(v.mode)),
-                            ParamEntry(ViperParams.PARAM_BASS_FREQUENCY, intArrayOf(ViperDispatcher.bassFrequencyToRaw(v.frequency))),
-                            ParamEntry(ViperParams.PARAM_BASS_GAIN, intArrayOf(v.gain)),
-                            ParamEntry(ViperParams.PARAM_BASS_ANTI_POP, intArrayOf(if (v.antiPop) 1 else 0)),
-                        ),
-                    )
-                }
+                val v = _uiState.value.bass
+                applyPref(Effects.bass.mode, v.mode, last = false)
+                applyPref(Effects.bass.frequency, v.frequency, last = false)
+                applyPref(Effects.bass.gain, v.gain, last = false)
+                applyPref(Effects.bass.antiPop, v.antiPop)
             }
         }
 
         fun setBassMonoEnabled(enabled: Boolean) {
-            applyPref(Effects.bassMono.enable, enabled)
+            applyPref(Effects.bassMono.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.bassMono
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_BASS_MONO_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                            ParamEntry(ViperParams.PARAM_BASS_MONO_MODE, intArrayOf(v.mode)),
-                            ParamEntry(ViperParams.PARAM_BASS_MONO_FREQUENCY, intArrayOf(ViperDispatcher.bassFrequencyToRaw(v.frequency))),
-                            ParamEntry(ViperParams.PARAM_BASS_MONO_GAIN, intArrayOf(v.gain)),
-                            ParamEntry(ViperParams.PARAM_BASS_MONO_ANTI_POP, intArrayOf(if (v.antiPop) 1 else 0)),
-                        ),
-                    )
-                }
+                val v = _uiState.value.bassMono
+                applyPref(Effects.bassMono.mode, v.mode, last = false)
+                applyPref(Effects.bassMono.frequency, v.frequency, last = false)
+                applyPref(Effects.bassMono.gain, v.gain, last = false)
+                applyPref(Effects.bassMono.antiPop, v.antiPop)
             }
         }
 
         fun setClarityEnabled(enabled: Boolean) {
-            applyPref(Effects.clarity.enable, enabled)
+            applyPref(Effects.clarity.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.clarity
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_CLARITY_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                            ParamEntry(ViperParams.PARAM_CLARITY_MODE, intArrayOf(v.mode)),
-                            ParamEntry(ViperParams.PARAM_CLARITY_GAIN, intArrayOf(v.gain)),
-                        ),
-                    )
-                }
+                val v = _uiState.value.clarity
+                applyPref(Effects.clarity.mode, v.mode, last = false)
+                applyPref(Effects.clarity.gain, v.gain)
             }
         }
 
         fun setCureEnabled(enabled: Boolean) {
-            applyPref(Effects.cure.enable, enabled)
+            applyPref(Effects.cure.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.cure
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_CURE_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                            ParamEntry(ViperParams.PARAM_CURE_CROSSFEED_PRESET, intArrayOf(v.crossfeedPreset)),
-                        ),
-                    )
-                }
+                val v = _uiState.value.cure
+                applyPref(Effects.cure.crossfeedPreset, v.crossfeedPreset)
             }
         }
 
         fun setAnalogXEnabled(enabled: Boolean) {
-            applyPref(Effects.analogX.enable, enabled)
+            applyPref(Effects.analogX.enable, enabled, last = !enabled)
             if (enabled) {
-                ifMasterOn {
-                    val v = _uiState.value.analogX
-                    viperService?.dispatchParamsBatch(
-                        listOf(
-                            ParamEntry(ViperParams.PARAM_ANALOG_X_ENABLE, intArrayOf(if (v.enable) 1 else 0)),
-                            ParamEntry(ViperParams.PARAM_ANALOG_X_MODE, intArrayOf(v.mode)),
-                        ),
-                    )
-                }
+                val v = _uiState.value.analogX
+                applyPref(Effects.analogX.mode, v.mode)
             }
         }
 

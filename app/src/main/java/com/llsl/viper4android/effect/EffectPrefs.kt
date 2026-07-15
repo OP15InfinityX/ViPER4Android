@@ -33,8 +33,9 @@ class IntPref(
     defaultValue: Int,
     get: (EffectState) -> Int,
     set: EffectState.(Int) -> EffectState,
+    private val toRawFn: ((Int) -> Int)? = null,
 ) : EffectPref<Int>(effectKey, paramId, jsonKey, defaultValue, get, set) {
-    override fun toRaw(value: Int): Int = value
+    override fun toRaw(value: Int): Int = toRawFn?.invoke(value) ?: value
 }
 
 class BoolPref(
@@ -68,24 +69,46 @@ class NullableLongPref(
     override fun toRaw(value: Long?): Int = value?.toInt() ?: -1
 }
 
+sealed class ListPref<E>(
+    effectKey: String,
+    paramId: Int,
+    jsonKey: String,
+    defaultValue: List<E>,
+    get: (EffectState) -> List<E>,
+    set: EffectState.(List<E>) -> EffectState,
+) : EffectPref<List<E>>(effectKey, paramId, jsonKey, defaultValue, get, set) {
+    override fun toRaw(value: List<E>): Int = 0
+
+    abstract val padValue: E
+
+    abstract fun elementToRaw(value: E): Int
+}
+
 class IntListPref(
     effectKey: String,
+    paramId: Int,
     jsonKey: String,
     defaultValue: List<Int>,
     get: (EffectState) -> List<Int>,
     set: EffectState.(List<Int>) -> EffectState,
-) : EffectPref<List<Int>>(effectKey, -1, jsonKey, defaultValue, get, set) {
-    override fun toRaw(value: List<Int>): Int = 0
+    private val elementToRawFn: ((Int) -> Int)? = null,
+) : ListPref<Int>(effectKey, paramId, jsonKey, defaultValue, get, set) {
+    override val padValue: Int = 0
+
+    override fun elementToRaw(value: Int): Int = elementToRawFn?.invoke(value) ?: value
 }
 
 class BoolListPref(
     effectKey: String,
+    paramId: Int,
     jsonKey: String,
     defaultValue: List<Boolean>,
     get: (EffectState) -> List<Boolean>,
     set: EffectState.(List<Boolean>) -> EffectState,
-) : EffectPref<List<Boolean>>(effectKey, -1, jsonKey, defaultValue, get, set) {
-    override fun toRaw(value: List<Boolean>): Int = 0
+) : ListPref<Boolean>(effectKey, paramId, jsonKey, defaultValue, get, set) {
+    override val padValue: Boolean = true
+
+    override fun elementToRaw(value: Boolean): Int = if (value) 1 else 0
 }
 
 class DoubleListPref(
@@ -103,7 +126,13 @@ val EFFECT_PREFS: List<EffectPref<*>> =
     listOf(Effects.masterEnable) + EFFECT_GROUPS.flatMap { it.prefs }
 
 val EFFECT_PREFS_BY_PARAM_ID: Map<Int, EffectPref<*>> =
-    EFFECT_PREFS.filter { it.paramId != -1 }.associateBy { it.paramId }
+    EFFECT_PREFS
+        .filter {
+            it.paramId != -1 &&
+                it !is IntListPref &&
+                it !is BoolListPref &&
+                it !is DoubleListPref
+        }.associateBy { it.paramId }
 
 val ENABLE_PREF_BY_EFFECT_KEY: Map<String, BoolPref> =
     EFFECT_GROUPS

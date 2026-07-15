@@ -632,24 +632,24 @@ fun MultibandCompressorSection(
     val releaseAuto = releaseAutos.getOrElse(b) { true }
     val noClip = noClips.getOrElse(b) { true }
 
-    val onBandEnableChange: (Boolean) -> Unit = { viewModel.setMultibandCompressorBandEnable(b, it) }
-    val onCrossoverChange: (Int) -> Unit = { viewModel.setMultibandCompressorCrossover(b, it) }
-    val onThresholdChange: (Int) -> Unit = { viewModel.setMultibandCompressorBandThreshold(b, it) }
-    val onRatioChange: (Int) -> Unit = { viewModel.setMultibandCompressorBandRatio(b, it) }
-    val onAutoKneeChange: (Boolean) -> Unit = { viewModel.setMultibandCompressorBandAutoKnee(b, it) }
-    val onKneeChange: (Int) -> Unit = { viewModel.setMultibandCompressorBandKnee(b, it) }
-    val onKneeMultiChange: (Int) -> Unit = { viewModel.setMultibandCompressorBandKneeMulti(b, it) }
-    val onAutoGainChange: (Boolean) -> Unit = { viewModel.setMultibandCompressorBandAutoGain(b, it) }
-    val onGainChange: (Int) -> Unit = { viewModel.setMultibandCompressorBandGain(b, it) }
-    val onAutoAttackChange: (Boolean) -> Unit = { viewModel.setMultibandCompressorBandAutoAttack(b, it) }
-    val onAttackChange: (Int) -> Unit = { viewModel.setMultibandCompressorBandAttack(b, it) }
-    val onMaxAttackChange: (Int) -> Unit = { viewModel.setMultibandCompressorBandMaxAttack(b, it) }
-    val onAutoReleaseChange: (Boolean) -> Unit = { viewModel.setMultibandCompressorBandAutoRelease(b, it) }
-    val onReleaseChange: (Int) -> Unit = { viewModel.setMultibandCompressorBandRelease(b, it) }
-    val onMaxReleaseChange: (Int) -> Unit = { viewModel.setMultibandCompressorBandMaxRelease(b, it) }
-    val onCrestChange: (Int) -> Unit = { viewModel.setMultibandCompressorBandCrest(b, it) }
-    val onAdaptChange: (Int) -> Unit = { viewModel.setMultibandCompressorBandAdapt(b, it) }
-    val onNoClipChange: (Boolean) -> Unit = { viewModel.setMultibandCompressorBandNoClip(b, it) }
+    val onBandEnableChange: (Boolean) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.bandEnables, b, it) }
+    val onCrossoverChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.crossovers, b, it) }
+    val onThresholdChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.thresholds, b, it) }
+    val onRatioChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.ratios, b, it) }
+    val onAutoKneeChange: (Boolean) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.kneeAutos, b, it) }
+    val onKneeChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.knees, b, it) }
+    val onKneeMultiChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.kneeMultis, b, it) }
+    val onAutoGainChange: (Boolean) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.gainAutos, b, it) }
+    val onGainChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.gains, b, it) }
+    val onAutoAttackChange: (Boolean) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.attackAutos, b, it) }
+    val onAttackChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.attacks, b, it) }
+    val onMaxAttackChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.maxAttacks, b, it) }
+    val onAutoReleaseChange: (Boolean) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.releaseAutos, b, it) }
+    val onReleaseChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.releases, b, it) }
+    val onMaxReleaseChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.maxReleases, b, it) }
+    val onCrestChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.crests, b, it) }
+    val onAdaptChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.adapts, b, it) }
+    val onNoClipChange: (Boolean) -> Unit = { viewModel.applyBandPref(Effects.multibandCompressor.noClips, b, it) }
 
     EffectSection(
         title = stringResource(R.string.section_multiband_compressor),
@@ -1178,15 +1178,15 @@ fun DynamicEqSection(
             val maxFreq =
                 if (safeTab < bandCount - 1) (freqs.getOrElse(safeTab + 1) { 20000 } - 5).toFloat() else 20000f
 
-            val onFreqChange: (Int) -> Unit = { viewModel.setDynamicEqBandFreq(safeTab, it) }
-            val onQChange: (Int) -> Unit = { viewModel.setDynamicEqBandQ(safeTab, it) }
-            val onGainChange: (Int) -> Unit = { viewModel.setDynamicEqBandGain(safeTab, it) }
+            val onFreqChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.dynamicEq.freqs, safeTab, it, bandCount) }
+            val onQChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.dynamicEq.qs, safeTab, it, bandCount) }
+            val onGainChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.dynamicEq.gains, safeTab, it, bandCount) }
             val onThresholdChange: (Int) -> Unit =
-                { viewModel.setDynamicEqBandThreshold(safeTab, it) }
-            val onAttackChange: (Int) -> Unit = { viewModel.setDynamicEqBandAttack(safeTab, it) }
-            val onReleaseChange: (Int) -> Unit = { viewModel.setDynamicEqBandRelease(safeTab, it) }
+                { viewModel.applyBandPref(Effects.dynamicEq.thresholds, safeTab, it, bandCount) }
+            val onAttackChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.dynamicEq.attacks, safeTab, it, bandCount) }
+            val onReleaseChange: (Int) -> Unit = { viewModel.applyBandPref(Effects.dynamicEq.releases, safeTab, it, bandCount) }
             val onFilterTypeChange: (Int) -> Unit =
-                { viewModel.setDynamicEqBandFilterType(safeTab, it) }
+                { viewModel.applyBandPref(Effects.dynamicEq.filterTypes, safeTab, it, bandCount) }
 
             LabeledSlider(
                 label = stringResource(R.string.label_frequency),

@@ -18,6 +18,7 @@ import com.llsl.viper4android.effect.HeadphoneSurroundState
 import com.llsl.viper4android.effect.LufsState
 import com.llsl.viper4android.effect.MultibandCompressorState
 import com.llsl.viper4android.effect.OutputState
+import com.llsl.viper4android.effect.ParamRaw
 import com.llsl.viper4android.effect.PlaybackGainControlState
 import com.llsl.viper4android.effect.PsychoacousticBassState
 import com.llsl.viper4android.effect.ReverbState
@@ -27,46 +28,11 @@ import com.llsl.viper4android.effect.StereoImagerState
 import com.llsl.viper4android.effect.TubeSimulatorState
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.ln
 
 /**
  * Serialize an EffectState to the byte layout of viper::ViPERParams as defined in ViperParamsLayout.kt.
  */
 object ViperParamsSerializer {
-    private fun fetThresholdToFloat(dB: Int): Float = (dB / -60.0).toFloat()
-
-    private fun fetKneeToFloat(dB: Int): Float = (dB / 60.0).toFloat()
-
-    private fun fetGainToFloat(dB: Int): Float = (dB / 60.0).toFloat()
-
-    private fun fetAttackMsToFloat(ms: Int): Float {
-        val timeSec = ms / 1000.0
-        if (timeSec <= 0) return 0f
-        val raw = (ln(timeSec) + 9.21034) / 7.600903
-        return raw.toFloat().coerceIn(0f, 2f)
-    }
-
-    private fun fetReleaseMsToFloat(ms: Int): Float {
-        val timeSec = ms / 1000.0
-        if (timeSec <= 0) return 0f
-        val raw = (ln(timeSec) + 5.298317) / 5.991465
-        return raw.toFloat().coerceIn(0f, 2f)
-    }
-
-    private fun bassFrequencyToHz(value: Int): Int = value + 15
-
-    private fun fieldSurroundWideningToFloat(value: Int): Float = value.toFloat()
-
-    private fun fieldSurroundMidImageToFloat(value: Int): Float = (value * 10 + 100) / 100f
-
-    private fun fieldSurroundDepthToShort(value: Int): Int = value * 75 + 200
-
-    private fun spectrumExtensionExciterToFloat(value: Int): Float = ((value * 5.6) / 100.0).toFloat()
-
-    private fun diffSurroundDelayToFloat(ms: Int): Float = ms.toFloat()
-
-    private fun dynamicSystemStrengthToFloat(value: Int): Float = (value * 20 + 100) / 100f
-
     /**
      * Serialize the entire ViPERParams struct into [buf] starting at [offset].
      */
@@ -213,19 +179,19 @@ object ViperParamsSerializer {
     ) {
         val l = ViperParamsLayout.FetCompressor
         buf.putBool(base + l.ENABLE, s.enable)
-        buf.putFloat(base + l.THRESHOLD, fetThresholdToFloat(s.threshold))
+        buf.putFloat(base + l.THRESHOLD, ParamRaw.fetCompressorThresholdF(s.threshold))
         buf.putFloat(base + l.RATIO, s.ratio / 100f)
-        buf.putFloat(base + l.KNEE, fetKneeToFloat(s.knee))
+        buf.putFloat(base + l.KNEE, ParamRaw.fetCompressorKneeF(s.knee))
         buf.putBool(base + l.KNEE_AUTO, s.kneeAuto)
-        buf.putFloat(base + l.GAIN, fetGainToFloat(s.gain))
+        buf.putFloat(base + l.GAIN, ParamRaw.fetCompressorGainF(s.gain))
         buf.putBool(base + l.GAIN_AUTO, s.gainAuto)
-        buf.putFloat(base + l.ATTACK, fetAttackMsToFloat(s.attack))
+        buf.putFloat(base + l.ATTACK, ParamRaw.fetCompressorAttackMsF(s.attack))
         buf.putBool(base + l.ATTACK_AUTO, s.attackAuto)
-        buf.putFloat(base + l.RELEASE, fetReleaseMsToFloat(s.release))
+        buf.putFloat(base + l.RELEASE, ParamRaw.fetCompressorReleaseMsF(s.release))
         buf.putBool(base + l.RELEASE_AUTO, s.releaseAuto)
         buf.putFloat(base + l.KNEE_MULTI, s.kneeMulti / 100f)
-        buf.putFloat(base + l.MAX_ATTACK, fetAttackMsToFloat(s.maxAttack))
-        buf.putFloat(base + l.MAX_RELEASE, fetReleaseMsToFloat(s.maxRelease))
+        buf.putFloat(base + l.MAX_ATTACK, ParamRaw.fetCompressorAttackMsF(s.maxAttack))
+        buf.putFloat(base + l.MAX_RELEASE, ParamRaw.fetCompressorReleaseMsF(s.maxRelease))
         buf.putFloat(base + l.CREST, s.crest / 100f)
         buf.putFloat(base + l.ADAPT, s.adapt / 100f)
         buf.putBool(base + l.NO_CLIP, s.noClip)
@@ -239,7 +205,7 @@ object ViperParamsSerializer {
         val l = ViperParamsLayout.Bass
         buf.putBool(base + l.ENABLE, s.enable)
         buf.putInt(base + l.MODE, s.mode)
-        buf.putInt(base + l.FREQUENCY, bassFrequencyToHz(s.frequency))
+        buf.putInt(base + l.FREQUENCY, ParamRaw.bassFrequency(s.frequency))
         buf.putFloat(base + l.GAIN, s.gain / 100f)
         buf.putBool(base + l.ANTI_POP, s.antiPop)
     }
@@ -252,7 +218,7 @@ object ViperParamsSerializer {
         val l = ViperParamsLayout.BassMono
         buf.putBool(base + l.ENABLE, s.enable)
         buf.putInt(base + l.MODE, s.mode)
-        buf.putInt(base + l.FREQUENCY, bassFrequencyToHz(s.frequency))
+        buf.putInt(base + l.FREQUENCY, ParamRaw.bassFrequency(s.frequency))
         buf.putFloat(base + l.GAIN, s.gain / 100f)
         buf.putBool(base + l.ANTI_POP, s.antiPop)
     }
@@ -278,7 +244,7 @@ object ViperParamsSerializer {
         val l = ViperParamsLayout.SpectrumExtension
         buf.putBool(base + l.ENABLE, s.enable)
         buf.putInt(base + l.STRENGTH, s.strength)
-        buf.putFloat(base + l.EXCITER, spectrumExtensionExciterToFloat(s.exciter))
+        buf.putFloat(base + l.EXCITER, ParamRaw.spectrumExtensionExciterF(s.exciter))
     }
 
     private fun writeEqualizer(
@@ -324,9 +290,9 @@ object ViperParamsSerializer {
     ) {
         val l = ViperParamsLayout.FieldSurround
         buf.putBool(base + l.ENABLE, s.enable)
-        buf.putFloat(base + l.WIDENING, fieldSurroundWideningToFloat(s.widening))
-        buf.putFloat(base + l.MID_IMAGE, fieldSurroundMidImageToFloat(s.midImage))
-        buf.putShort(base + l.DEPTH, fieldSurroundDepthToShort(s.depth).toShort())
+        buf.putFloat(base + l.WIDENING, s.widening.toFloat())
+        buf.putFloat(base + l.MID_IMAGE, ParamRaw.fieldSurroundMidImage(s.midImage) / 100f)
+        buf.putShort(base + l.DEPTH, ParamRaw.fieldSurroundDepth(s.depth).toShort())
     }
 
     private fun writeDiffSurround(
@@ -336,7 +302,7 @@ object ViperParamsSerializer {
     ) {
         val l = ViperParamsLayout.DiffSurround
         buf.putBool(base + l.ENABLE, s.enable)
-        buf.putFloat(base + l.DELAY, diffSurroundDelayToFloat(s.delay))
+        buf.putFloat(base + l.DELAY, s.delay.toFloat())
         buf.putBool(base + l.REVERSE, s.reverse)
         buf.putFloat(base + l.WET_DRY_MIX, s.wetDryMix / 100f)
         buf.putFloat(base + l.LP_CUTOFF, s.lpCutoff.toFloat())
@@ -373,9 +339,9 @@ object ViperParamsSerializer {
     ) {
         val l = ViperParamsLayout.Reverb
         buf.putBool(base + l.ENABLE, s.enable)
-        buf.putFloat(base + l.ROOM_SIZE, s.roomSize / 100f)
-        buf.putFloat(base + l.WIDTH, s.width / 100f)
-        buf.putFloat(base + l.DAMP, s.damp / 100f)
+        buf.putFloat(base + l.ROOM_SIZE, ParamRaw.reverbRoomSize(s.roomSize) / 100f)
+        buf.putFloat(base + l.WIDTH, ParamRaw.reverbWidth(s.width) / 100f)
+        buf.putFloat(base + l.DAMP, ParamRaw.reverbDamp(s.damp) / 100f)
         buf.putFloat(base + l.WET, s.wet / 100f)
         buf.putFloat(base + l.DRY, s.dry / 100f)
     }
@@ -393,7 +359,7 @@ object ViperParamsSerializer {
         buf.putInt(base + l.Y_COEFF_HIGH, s.yHigh)
         buf.putFloat(base + l.SIDE_GAIN_LOW, s.sideGainLow / 100f)
         buf.putFloat(base + l.SIDE_GAIN_HIGH, s.sideGainHigh / 100f)
-        buf.putFloat(base + l.STRENGTH, dynamicSystemStrengthToFloat(s.strength))
+        buf.putFloat(base + l.STRENGTH, ParamRaw.dynamicSystemStrength(s.strength) / 100f)
     }
 
     private fun writeClarity(
@@ -484,20 +450,20 @@ object ViperParamsSerializer {
         for (i in 0 until bandCount) {
             val bandBase = base + l.BANDS + i * lb.SIZE
             buf.putBool(bandBase + lb.ENABLE, bandEnables.getOrFalse(i))
-            buf.putFloat(bandBase + lb.THRESHOLD, thresholds.getOrZero(i) / 100f)
+            buf.putFloat(bandBase + lb.THRESHOLD, ParamRaw.fetCompressorThresholdF(thresholds.getOrZero(i)))
             buf.putFloat(bandBase + lb.RATIO, ratios.getOrZero(i) / 100f)
-            buf.putFloat(bandBase + lb.KNEE, knees.getOrZero(i) / 100f)
+            buf.putFloat(bandBase + lb.KNEE, ParamRaw.fetCompressorKneeF(knees.getOrZero(i)))
             buf.putBool(bandBase + lb.KNEE_AUTO, kneeAutos.getOrFalse(i))
-            buf.putFloat(bandBase + lb.GAIN, gains.getOrZero(i) / 100f)
+            buf.putFloat(bandBase + lb.GAIN, ParamRaw.fetCompressorGainF(gains.getOrZero(i)))
             buf.putBool(bandBase + lb.GAIN_AUTO, gainAutos.getOrFalse(i))
-            buf.putFloat(bandBase + lb.ATTACK, attacks.getOrZero(i) / 100f)
+            buf.putFloat(bandBase + lb.ATTACK, ParamRaw.fetCompressorAttackMsF(attacks.getOrZero(i)))
             buf.putBool(bandBase + lb.ATTACK_AUTO, attackAutos.getOrFalse(i))
-            buf.putFloat(bandBase + lb.RELEASE, releases.getOrZero(i) / 100f)
+            buf.putFloat(bandBase + lb.RELEASE, ParamRaw.fetCompressorReleaseMsF(releases.getOrZero(i)))
             buf.putBool(bandBase + lb.RELEASE_AUTO, releaseAutos.getOrFalse(i))
             buf.putFloat(bandBase + lb.KNEE_MULTI, kneeMultis.getOrZero(i) / 100f)
-            buf.putFloat(bandBase + lb.MAX_ATTACK, maxAttacks.getOrZero(i) / 100f)
-            buf.putFloat(bandBase + lb.MAX_RELEASE, maxReleases.getOrZero(i) / 100f)
-            buf.putFloat(bandBase + lb.CREST, crests.getOrZero(i) / 100f)
+            buf.putFloat(bandBase + lb.MAX_ATTACK, ParamRaw.fetCompressorAttackMsF(maxAttacks.getOrZero(i)))
+            buf.putFloat(bandBase + lb.MAX_RELEASE, ParamRaw.fetCompressorReleaseMsF(maxReleases.getOrZero(i)))
+            buf.putFloat(bandBase + lb.CREST, ParamRaw.fetCompressorReleaseMsF(crests.getOrZero(i)))
             buf.putFloat(bandBase + lb.ADAPT, adapts.getOrZero(i) / 100f)
             buf.putBool(bandBase + lb.NO_CLIP, noClips.getOrFalse(i))
         }
