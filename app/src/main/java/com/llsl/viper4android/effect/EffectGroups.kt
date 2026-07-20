@@ -1,5 +1,6 @@
 package com.llsl.viper4android.effect
 
+import com.llsl.viper4android.data.repository.ViperRepository
 import com.llsl.viper4android.viper.ViperParams
 
 data class EffectGroup(
@@ -1203,6 +1204,7 @@ object Effects {
             defaultValue = false,
             get = { it.masterEnable },
             set = { copy(masterEnable = it) },
+            prefKeyOverride = ViperRepository.PREF_MASTER_ENABLE,
         )
 
     val masterLimiter = MasterLimiterEffect()

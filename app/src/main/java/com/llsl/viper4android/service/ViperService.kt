@@ -194,7 +194,7 @@ class ViperService : LifecycleService() {
         skipShmWrite: Boolean = false,
     ) {
         val state = ViperDispatcher.loadFullStateFromPrefs(repository)
-        val isMasterOn = state.masterEnable
+        val isMasterOn = masterEnabled
         effect.enabled = isMasterOn
         if (useAidlTypeUuid) {
             if (!skipShmWrite) {

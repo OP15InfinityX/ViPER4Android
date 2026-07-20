@@ -15,15 +15,17 @@ sealed class EffectPref<T>(
     val defaultValue: T,
     val get: (EffectState) -> T,
     val set: EffectState.(T) -> EffectState,
+    prefKeyOverride: String? = null,
 ) {
     val prefKey: String =
-        if (paramId != -1) {
-            paramId.toString()
-        } else if (effectKey.isEmpty()) {
-            jsonKey
-        } else {
-            "${effectKey}_$jsonKey"
-        }
+        prefKeyOverride
+            ?: if (paramId != -1) {
+                paramId.toString()
+            } else if (effectKey.isEmpty()) {
+                jsonKey
+            } else {
+                "${effectKey}_$jsonKey"
+            }
 
     abstract fun toRaw(value: T): Int
 }
@@ -47,7 +49,8 @@ class BoolPref(
     defaultValue: Boolean,
     get: (EffectState) -> Boolean,
     set: EffectState.(Boolean) -> EffectState,
-) : EffectPref<Boolean>(effectKey, paramId, jsonKey, defaultValue, get, set) {
+    prefKeyOverride: String? = null,
+) : EffectPref<Boolean>(effectKey, paramId, jsonKey, defaultValue, get, set, prefKeyOverride) {
     override fun toRaw(value: Boolean): Int = if (value) 1 else 0
 }
 
