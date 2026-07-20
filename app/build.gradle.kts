@@ -30,18 +30,8 @@ android {
         generateLocaleConfig = true
     }
 
-    signingConfigs {
-        create("release") {
-            storeFile = file(localProps.getProperty("KEYSTORE_FILE", ""))
-            storePassword = localProps.getProperty("KEYSTORE_PASSWORD", "")
-            keyAlias = localProps.getProperty("KEY_ALIAS", "")
-            keyPassword = localProps.getProperty("KEY_PASSWORD", "")
-        }
-    }
-
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

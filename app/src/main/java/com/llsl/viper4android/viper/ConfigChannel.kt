@@ -23,9 +23,9 @@ data class FileDriverStatus(
 )
 
 object ConfigChannel {
-    private const val SHM_STATUS_PATH = "/data/local/tmp/v4a/shm_status.bin"
-    private const val SHM_PARAMS_PATH = "/data/local/tmp/v4a/shm_params.bin"
-    private const val SHM_BULK_PATH = "/data/local/tmp/v4a/shm_bulk.bin"
+    private const val SHM_STATUS_PATH = "/data/vendor/audiox/shm_status.bin"
+    private const val SHM_PARAMS_PATH = "/data/vendor/audiox/shm_params.bin"
+    private const val SHM_BULK_PATH = "/data/vendor/audiox/shm_bulk.bin"
 
     private const val SHM_MAGIC = 0x534D3456 // 'V4MS' little-endian
     private const val FORMAT_VERSION = 5
@@ -94,7 +94,7 @@ object ConfigChannel {
 
     private fun createShmViaSu() {
         RootShell.exec(
-            "mkdir -p /data/local/tmp/v4a && " +
+            "mkdir -p /data/vendor/audiox && " +
                 "[ ! -f $SHM_STATUS_PATH ] && dd if=/dev/zero of=$SHM_STATUS_PATH bs=$STATUS_SHM_SIZE count=1 2>/dev/null; " +
                 "[ ! -f $SHM_PARAMS_PATH ] && dd if=/dev/zero of=$SHM_PARAMS_PATH bs=$PARAM_SHM_SIZE count=1 2>/dev/null; " +
                 "[ ! -f $SHM_BULK_PATH ]   && dd if=/dev/zero of=$SHM_BULK_PATH   bs=$BULK_SHM_SIZE   count=1 2>/dev/null; " +

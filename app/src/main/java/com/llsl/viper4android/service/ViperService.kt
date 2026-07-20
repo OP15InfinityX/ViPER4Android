@@ -492,7 +492,7 @@ class ViperService : LifecycleService() {
             return
         }
         val safeName = fileName.replace("'", "")
-        val stagedPath = "/data/local/tmp/v4a/kernel/$safeName"
+        val stagedPath = "/data/vendor/audiox/kernel/$safeName"
         val staged = File(stagedPath)
         val needCopy = !(staged.exists() && staged.length() == src.length())
         if (needCopy) {
